@@ -4,23 +4,40 @@ import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Welcome');
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
 
   const navigation = {
     navigate: (screenName) => setCurrentScreen(screenName),
     goBack: () => setCurrentScreen('Welcome'),
   };
 
+  const handleAuthSuccess = (userData, userToken) => {
+    setUser(userData);
+    setToken(userToken);
+    setCurrentScreen('Profile');
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    setCurrentScreen('Welcome');
+  };
+
   const renderScreen = () => {
     switch (currentScreen) {
       case 'Login':
-        return <LoginScreen navigation={navigation} />;
+        return <LoginScreen navigation={navigation} onLoginSuccess={handleAuthSuccess} />;
       case 'Register':
-        return <RegisterScreen navigation={navigation} />;
+        return <RegisterScreen navigation={navigation} onRegisterSuccess={handleAuthSuccess} />;
+      case 'Profile':
+        return <ProfileScreen token={token} user={user} onLogout={handleLogout} navigation={navigation} />;
       case 'Home':
-        return <HomeScreen navigation={navigation} />;
+        return <HomeScreen user={user} navigation={navigation} onLogout={handleLogout} />;
       case 'Welcome':
       default:
         return <WelcomeScreen navigation={navigation} />;
@@ -40,4 +57,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a2e',
   },
 });
-

@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { registerUser } from '../services/api';
 
-export default function RegisterScreen({ navigation }) {
+export default function RegisterScreen({ navigation, onRegisterSuccess }) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-
     if (!username || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    // TODO: Connect to backend API
-    setLoading(false);
-    
+    try {
+      const res = await registerUser(username, email, password);
+      Alert.alert('Success', `Account created successfully! Welcome, ${res.user.username}! 🐾`);
+      if (onRegisterSuccess) {
+        onRegisterSuccess(res.user, res.token);
+      } else {
+        navigation?.navigate('Home');
+      }
+    } catch (error) {
+      Alert.alert('Registration Failed', error.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

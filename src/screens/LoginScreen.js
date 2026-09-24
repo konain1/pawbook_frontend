@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { loginUser } from '../services/api';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,19 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     setLoading(true);
-    // TODO: Connect to backend API
-    setLoading(false);
+    try {
+      const res = await loginUser(email, password);
+      Alert.alert('Success', `Welcome back, ${res.user.username}! 🐾`);
+      if (onLoginSuccess) {
+        onLoginSuccess(res.user, res.token);
+      } else {
+        navigation?.navigate('Home');
+      }
+    } catch (error) {
+      Alert.alert('Login Failed', error.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
