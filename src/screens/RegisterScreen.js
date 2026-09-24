@@ -8,13 +8,16 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+
     if (!username || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+
     setLoading(true);
     // TODO: Connect to backend API
     setLoading(false);
+    
   };
 
   return (
