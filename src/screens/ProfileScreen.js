@@ -16,7 +16,7 @@ import { getProfile, updateAvatar } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-export default function ProfileScreen({ token, user: initialUser, onLogout }) {
+export default function ProfileScreen({ token, user: initialUser, onLogout, navigation }) {
   const [profile, setProfile] = useState(initialUser || null);
   const [loading, setLoading] = useState(!initialUser);
   const [uploading, setUploading] = useState(false);
