@@ -44,8 +44,10 @@ export default function App() {
     }
   };
 
+  const bgColor = currentScreen === 'Profile' ? '#7C3AED' : '#1a1a2e';
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
       {renderScreen()}
     </SafeAreaView>
   );
@@ -54,6 +56,5 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
   },
 });

@@ -9,9 +9,12 @@ import {
   Alert,
   ScrollView,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getProfile, updateAvatar } from '../services/api';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen({ token, user: initialUser, onLogout }) {
   const [profile, setProfile] = useState(initialUser || null);
@@ -58,7 +61,7 @@ export default function ProfileScreen({ token, user: initialUser, onLogout }) {
     try {
       const res = await updateAvatar(token, { uri: asset.uri, name: filename, type });
       setProfile(res.user);
-      Alert.alert('Success', 'Profile picture updated!');
+      Alert.alert('✅ Success', 'Profile picture updated!');
     } catch (err) {
       Alert.alert('Upload Failed', err.message || 'Could not upload image');
     } finally {
@@ -69,10 +72,14 @@ export default function ProfileScreen({ token, user: initialUser, onLogout }) {
   const getInitials = (name = '') =>
     name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    : null;
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#e94560" />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color="#fff" />
         <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
@@ -81,116 +88,270 @@ export default function ProfileScreen({ token, user: initialUser, onLogout }) {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#e94560" />}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-          <Text style={styles.logoutText}>Log out</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Purple Hero Section ── */}
+      <View style={styles.hero}>
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <Text style={styles.topBarTitle}>My Profile</Text>
+          <TouchableOpacity style={styles.logoutPill} onPress={onLogout}>
+            <Text style={styles.logoutPillText}>Log out</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Avatar */}
-      <View style={styles.avatarSection}>
-        <TouchableOpacity onPress={handlePickImage} activeOpacity={0.85} disabled={uploading}>
-          <View style={styles.avatarWrapper}>
-            {profile?.avatar ? (
-              <Image source={{ uri: profile.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitials}>{getInitials(profile?.username || 'U')}</Text>
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              {uploading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.cameraIcon}>📷</Text>
-              )}
+        {/* Avatar */}
+        <TouchableOpacity
+          style={styles.avatarWrapper}
+          onPress={handlePickImage}
+          activeOpacity={0.85}
+          disabled={uploading}
+        >
+          {profile?.avatar ? (
+            <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarInitials}>{getInitials(profile?.username || 'U')}</Text>
             </View>
+          )}
+          {/* Camera badge */}
+          <View style={styles.cameraBadge}>
+            {uploading
+              ? <ActivityIndicator size="small" color="#7C3AED" />
+              : <Text style={styles.cameraEmoji}>📷</Text>
+            }
           </View>
         </TouchableOpacity>
 
+        {/* Name & tag */}
+        <Text style={styles.heroName}>{profile?.username || 'Pawbook User'}</Text>
+        <Text style={styles.heroEmail}>{profile?.email || ''}</Text>
+
+        {/* Set photo CTA — only when no avatar */}
         {!profile?.avatar && (
-          <TouchableOpacity style={styles.uploadCta} onPress={handlePickImage} disabled={uploading}>
-            {uploading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.uploadCtaText}>📸  Set Profile Picture</Text>
-            )}
+          <TouchableOpacity
+            style={styles.setPhotoCta}
+            onPress={handlePickImage}
+            disabled={uploading}
+          >
+            {uploading
+              ? <ActivityIndicator color="#7C3AED" />
+              : <Text style={styles.setPhotoCtaText}>📸  Set Profile Picture</Text>
+            }
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Info cards */}
+      {/* ── White Card Section ── */}
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Username</Text>
-        <Text style={styles.cardValue}>{profile?.username || '—'}</Text>
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Email</Text>
-        <Text style={styles.cardValue}>{profile?.email || '—'}</Text>
-      </View>
-
-      {profile?.bio ? (
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Bio</Text>
-          <Text style={styles.cardValue}>{profile.bio}</Text>
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>🐾</Text>
+            <Text style={styles.statLabel}>Pawbook</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{memberSince?.split(' ')[0] || '—'}</Text>
+            <Text style={styles.statLabel}>Joined</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>Active</Text>
+            <Text style={styles.statLabel}>Status</Text>
+          </View>
         </View>
-      ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.cardLabel}>Member since</Text>
-        <Text style={styles.cardValue}>
-          {profile?.createdAt
-            ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric', month: 'long', day: 'numeric',
-              })
-            : '—'}
-        </Text>
-      </View>
+        <View style={styles.divider} />
 
-      {profile?.avatar && (
-        <TouchableOpacity style={styles.changeAvatarBtn} onPress={handlePickImage} disabled={uploading}>
-          {uploading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.changeAvatarText}>Change Profile Picture</Text>
-          )}
+        {/* Info rows */}
+        <InfoRow icon="👤" label="Username" value={profile?.username} />
+        <InfoRow icon="📧" label="Email" value={profile?.email} />
+        {profile?.bio && <InfoRow icon="✏️" label="Bio" value={profile.bio} />}
+        {memberSince && <InfoRow icon="📅" label="Member since" value={memberSince} />}
+
+        <View style={styles.divider} />
+
+        {/* Action buttons */}
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={handlePickImage}
+          disabled={uploading}
+        >
+          {uploading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.primaryBtnText}>
+                {profile?.avatar ? 'Change Profile Picture' : '📸  Set Profile Picture'}
+              </Text>
+          }
         </TouchableOpacity>
-      )}
+
+        <TouchableOpacity style={styles.outlineBtn} onPress={onLogout}>
+          <Text style={styles.outlineBtnText}>Log out</Text>
+        </TouchableOpacity>
+
+      </View>
     </ScrollView>
   );
 }
 
+function InfoRow({ icon, label, value }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoIcon}>{icon}</Text>
+      <View style={styles.infoText}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value || '—'}</Text>
+      </View>
+    </View>
+  );
+}
+
+const PURPLE = '#7C3AED';
+const PURPLE_DARK = '#5B21B6';
+const PURPLE_LIGHT = '#EDE9FE';
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
-  content: { paddingHorizontal: 24, paddingBottom: 50 },
-  centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#a0a0b0', marginTop: 12, fontSize: 15 },
+  container: { flex: 1, backgroundColor: '#F5F3FF' },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 60, marginBottom: 36 },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: '#fff' },
-  logoutBtn: { backgroundColor: '#16213e', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#e94560' },
-  logoutText: { color: '#e94560', fontSize: 13, fontWeight: '600' },
+  loadingScreen: { flex: 1, backgroundColor: PURPLE, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: '#fff', marginTop: 12, fontSize: 15, opacity: 0.8 },
 
-  avatarSection: { alignItems: 'center', marginBottom: 36 },
-  avatarWrapper: { position: 'relative' },
-  avatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: '#e94560' },
-  avatarPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#16213e', borderWidth: 3, borderColor: '#2a2a4a', justifyContent: 'center', alignItems: 'center' },
-  avatarInitials: { fontSize: 42, fontWeight: '700', color: '#e94560' },
-  cameraBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: '#e94560', width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#1a1a2e' },
-  cameraIcon: { fontSize: 16 },
-  uploadCta: { marginTop: 18, backgroundColor: '#e94560', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24, minWidth: 180, alignItems: 'center' },
-  uploadCtaText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  // ── Hero ──
+  hero: {
+    backgroundColor: PURPLE,
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
 
-  card: { backgroundColor: '#16213e', borderRadius: 14, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#2a2a4a' },
-  cardLabel: { color: '#a0a0b0', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
-  cardValue: { color: '#fff', fontSize: 16, fontWeight: '500' },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 56,
+    marginBottom: 28,
+  },
+  topBarTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  logoutPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  logoutPillText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  changeAvatarBtn: { marginTop: 16, borderWidth: 1.5, borderColor: '#e94560', paddingVertical: 13, borderRadius: 12, alignItems: 'center' },
-  changeAvatarText: { color: '#e94560', fontSize: 15, fontWeight: '600' },
+  avatarWrapper: { position: 'relative', marginBottom: 16 },
+  avatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  avatarPlaceholder: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: PURPLE_DARK,
+    borderWidth: 4,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitials: { fontSize: 38, fontWeight: '800', color: '#fff' },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  cameraEmoji: { fontSize: 15 },
+
+  heroName: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  heroEmail: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 16 },
+
+  setPhotoCta: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 24,
+    marginTop: 4,
+  },
+  setPhotoCtaText: { color: PURPLE, fontSize: 14, fontWeight: '700' },
+
+  // ── White Card ──
+  card: {
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: -32,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+    marginBottom: 32,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statItem: { alignItems: 'center', flex: 1 },
+  statValue: { fontSize: 18, fontWeight: '700', color: '#1a1a2e', marginBottom: 2 },
+  statLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statDivider: { width: 1, height: 36, backgroundColor: '#E5E7EB' },
+
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 20 },
+
+  // Info rows
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
+  infoIcon: { fontSize: 20, marginRight: 14, width: 28, textAlign: 'center' },
+  infoText: { flex: 1 },
+  infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  infoValue: { fontSize: 15, color: '#1a1a2e', fontWeight: '600' },
+
+  // Buttons
+  primaryBtn: {
+    backgroundColor: PURPLE,
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: PURPLE,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  outlineBtn: {
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  outlineBtnText: { color: '#6B7280', fontSize: 15, fontWeight: '600' },
 });
