@@ -119,3 +119,78 @@ export const updateAvatar = async (token, image) => {
     xhr.send(formData);
   });
 };
+
+// ─── Friend / Search APIs ───────────────────────────────────
+
+/** Search users by username */
+export const searchUsers = async (token, query) => {
+  const response = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Search failed');
+  return data;
+};
+
+/** Send a friend request */
+export const sendFriendRequest = async (token, userId) => {
+  const response = await fetch(`${API_URL}/friends/request/${userId}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to send request');
+  return data;
+};
+
+/** Get all pending friend requests received */
+export const getPendingRequests = async (token) => {
+  const response = await fetch(`${API_URL}/friends/requests`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch requests');
+  return data;
+};
+
+/** Get all sent friend requests */
+export const getSentRequests = async (token) => {
+  const response = await fetch(`${API_URL}/friends/sent`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch sent requests');
+  return data;
+};
+
+/** Get all friends */
+export const getFriends = async (token) => {
+  const response = await fetch(`${API_URL}/friends`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch friends');
+  return data;
+};
+
+/** Accept a friend request */
+export const acceptFriendRequest = async (token, requestId) => {
+  const response = await fetch(`${API_URL}/friends/accept/${requestId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to accept');
+  return data;
+};
+
+/** Reject a friend request */
+export const rejectFriendRequest = async (token, requestId) => {
+  const response = await fetch(`${API_URL}/friends/reject/${requestId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to reject');
+  return data;
+};
