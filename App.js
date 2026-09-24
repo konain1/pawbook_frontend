@@ -5,6 +5,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Welcome');
@@ -36,6 +37,15 @@ export default function App() {
         return <RegisterScreen navigation={navigation} onRegisterSuccess={handleAuthSuccess} />;
       case 'Profile':
         return <ProfileScreen token={token} user={user} onLogout={handleLogout} navigation={navigation} />;
+      case 'EditProfile':
+        return (
+          <EditProfileScreen
+            token={token}
+            user={user}
+            navigation={navigation}
+            onProfileUpdate={(updatedUser) => setUser(updatedUser)}
+          />
+        );
       case 'Home':
         return <HomeScreen user={user} navigation={navigation} onLogout={handleLogout} />;
       case 'Welcome':
@@ -44,7 +54,7 @@ export default function App() {
     }
   };
 
-  const bgColor = currentScreen === 'Profile' ? '#7C3AED' : '#1a1a2e';
+  const bgColor = ['Profile', 'EditProfile'].includes(currentScreen) ? '#7C3AED' : '#1a1a2e';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>

@@ -96,9 +96,14 @@ export default function ProfileScreen({ token, user: initialUser, onLogout }) {
         {/* Top bar */}
         <View style={styles.topBar}>
           <Text style={styles.topBarTitle}>My Profile</Text>
-          <TouchableOpacity style={styles.logoutPill} onPress={onLogout}>
-            <Text style={styles.logoutPillText}>Log out</Text>
-          </TouchableOpacity>
+          <View style={styles.topBarActions}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.navigate('EditProfile')}>
+              <Text style={styles.iconBtnText}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutPill} onPress={onLogout}>
+              <Text style={styles.logoutPillText}>Log out</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar */}
@@ -172,26 +177,6 @@ export default function ProfileScreen({ token, user: initialUser, onLogout }) {
         {profile?.bio && <InfoRow icon="✏️" label="Bio" value={profile.bio} />}
         {memberSince && <InfoRow icon="📅" label="Member since" value={memberSince} />}
 
-        <View style={styles.divider} />
-
-        {/* Action buttons */}
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={handlePickImage}
-          disabled={uploading}
-        >
-          {uploading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.primaryBtnText}>
-                {profile?.avatar ? 'Change Profile Picture' : '📸  Set Profile Picture'}
-              </Text>
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.outlineBtn} onPress={onLogout}>
-          <Text style={styles.outlineBtnText}>Log out</Text>
-        </TouchableOpacity>
-
       </View>
     </ScrollView>
   );
@@ -247,6 +232,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   logoutPillText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  topBarActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  iconBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  iconBtnText: { fontSize: 18 },
 
   avatarWrapper: { position: 'relative', marginBottom: 16 },
   avatar: {
