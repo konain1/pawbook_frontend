@@ -26,7 +26,7 @@ export default function RegisterScreen({ navigation }) {
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Join Pawbook 🐶</Text>
+      <Text style={styles.title}>Join Pawbook 🐈</Text>
       <Text style={styles.subtitle}>Create your account</Text>
 
       <TextInput
@@ -64,30 +64,36 @@ export default function RegisterScreen({ navigation }) {
       <TouchableOpacity onPress={() => navigation?.navigate('Login')}>
         <Text style={styles.link}>Already have an account? <Text style={styles.linkBold}>Login</Text></Text>
       </TouchableOpacity>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
+
   backButton: {
     position: 'absolute',
     top: 50,
     left: 25,
     zIndex: 10,
   },
+
   backButtonText: {
     color: '#e94560',
     fontSize: 16,
     fontWeight: '600',
   },
+
   title: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
   subtitle: { fontSize: 16, color: '#a0a0b0', marginBottom: 40 },
+
   input: {
     backgroundColor: '#16213e',
     color: '#fff',
@@ -98,6 +104,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2a2a4a',
   },
+
   btn: {
     backgroundColor: '#e94560',
     paddingVertical: 15,
@@ -106,7 +113,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
   },
+
   btnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
   link: { color: '#a0a0b0', textAlign: 'center', fontSize: 15 },
   linkBold: { color: '#e94560', fontWeight: '600' },
+  
 });
