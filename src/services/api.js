@@ -197,3 +197,85 @@ export const rejectFriendRequest = async (token, requestId) => {
   if (!response.ok) throw new Error(data.message || 'Failed to reject');
   return data;
 };
+
+// ─── Post / Feed APIs ───────────────────────────────────────
+
+/** Get all posts (feed, newest first) */
+export const getAllPosts = async (token) => {
+  const response = await fetch(`${API_URL}/posts`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch posts');
+  return data;
+};
+
+/** Create a new post (image + caption) via XHR */
+export const createPost = async (token, image, caption) => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('image', {
+      uri: image.uri,
+      name: image.name || 'post.jpg',
+      type: image.type || 'image/jpeg',
+    });
+    if (caption) formData.append('caption', caption);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_URL}/posts`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(data);
+        } else {
+          reject(new Error(data.message || 'Failed to create post'));
+        }
+      } catch {
+        reject(new Error(`Server error (${xhr.status})`));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send(formData);
+  });
+};
+
+/** Like / unlike a post */
+export const likePost = async (token, postId) => {
+  const response = await fetch(`${API_URL}/posts/${postId}/like`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to like post');
+  return data;
+};
+
+/** Add a comment to a post */
+export const addComment = async (token, postId, text) => {
+  const response = await fetch(`${API_URL}/posts/${postId}/comment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to add comment');
+  return data;
+};
+
+/** Delete a post */
+export const deletePost = async (token, postId) => {
+  const response = await fetch(`${API_URL}/posts/${postId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to delete post');
+  return data;
+};

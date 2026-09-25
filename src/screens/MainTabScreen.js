@@ -39,7 +39,7 @@ export default function MainTabScreen({ token, user, onLogout, onProfileUpdate, 
   const renderTab = () => {
     switch (activeTab) {
       case 'Feed':
-        return <FeedScreen user={user} />;
+        return <FeedScreen user={user} token={token} />;
       case 'Friends':
         return <FriendsScreen user={user} token={token} />;
       case 'Chat':
