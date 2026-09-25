@@ -49,7 +49,6 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
 
       Alert.alert('✅ Saved', 'Profile updated successfully!');
       if (onProfileUpdate) onProfileUpdate(data.user);
-      navigation?.navigate('Profile');
     } catch (err) {
       Alert.alert('Error', err.message || 'Something went wrong');
     } finally {
