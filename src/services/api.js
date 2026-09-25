@@ -1,7 +1,10 @@
+import { Platform } from 'react-native';
+
 // Backend API URL
-// - iOS Simulator → localhost (runs on Mac)
-// - Physical iPhone → Mac's LAN IP
-export const API_URL = 'http://192.168.1.6:8000/api';
+// - Android Emulator → 10.0.2.2 (maps to host machine's localhost)
+// - iOS Simulator / Physical devices → Mac's LAN IP
+const HOST = Platform.OS === 'android' ? '10.0.2.2' : '192.168.1.6';
+export const API_URL = `http://${HOST}:8000/api`;
 
 /**
  * Register a new user
