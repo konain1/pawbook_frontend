@@ -295,3 +295,52 @@ export const replyToComment = async (token, postId, commentId, text) => {
   return data;
 };
 
+// ─── Chat APIs ───────────────────────────────────────────────
+
+/** Get list of conversations with latest message and unread count */
+export const getConversationList = async (token) => {
+  const response = await fetch(`${API_URL}/chat`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch conversations');
+  return data;
+};
+
+/** Get message history with a friend */
+export const getConversation = async (token, friendId) => {
+  const response = await fetch(`${API_URL}/chat/${friendId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch conversation');
+  return data;
+};
+
+/** Send a message to a friend */
+export const sendMessage = async (token, friendId, text) => {
+  const response = await fetch(`${API_URL}/chat/${friendId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to send message');
+  return data;
+};
+
+/** Mark messages from a friend as read */
+export const markMessagesAsRead = async (token, friendId) => {
+  const response = await fetch(`${API_URL}/chat/read/${friendId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to mark messages as read');
+  return data;
+};
+
+

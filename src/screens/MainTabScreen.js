@@ -43,7 +43,7 @@ export default function MainTabScreen({ token, user, onLogout, onProfileUpdate, 
       case 'Friends':
         return <FriendsScreen user={user} token={token} />;
       case 'Chat':
-        return <ChatScreen user={user} token={token} />;
+        return <ChatScreen user={user} token={token} navigation={tabNavigation} />;
       case 'Profile':
         return (
           <ProfileScreen
