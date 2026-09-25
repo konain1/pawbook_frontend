@@ -5,7 +5,7 @@ import {
   Modal, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getAllPosts, createPost, likePost, addComment, deletePost } from '../services/api';
+import { getAllPosts, createPost, likePost, addComment, replyToComment, deletePost } from '../services/api';
 
 const PURPLE = '#7C3AED';
 const { width } = Dimensions.get('window');
@@ -20,15 +20,17 @@ export default function FeedScreen({ user, token }) {
   const [posting, setPosting] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentingOn, setCommentingOn] = useState(null);
+  const [replyTarget, setReplyTarget] = useState(null); // { postId, commentId, username }
   const [expandedComments, setExpandedComments] = useState({});
 
   const fetchPosts = useCallback(async () => {
     if (!token) return;
     try {
       const data = await getAllPosts(token);
-      setPosts(data);
+      setPosts(Array.isArray(data) ? data : []);
     } catch (err) {
-      // silent
+      console.warn('Error fetching posts:', err.message);
+      Alert.alert('Feed Error', err.message || 'Could not load posts');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -100,17 +102,42 @@ export default function FeedScreen({ user, token }) {
     }
   };
 
-  // ── Comment ──
-  const handleComment = async (postId) => {
+  // ── Comment / Reply Submit ──
+  const handleSubmitComment = async (postId) => {
     if (!commentText.trim()) return;
-    try {
-      const updatedPost = await addComment(token, postId, commentText.trim());
-      setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
-      setCommentText('');
-      setCommentingOn(null);
-    } catch (err) {
-      Alert.alert('Error', err.message);
+    
+    if (replyTarget && replyTarget.postId === postId) {
+      // Send Reply
+      try {
+        const updatedPost = await replyToComment(token, postId, replyTarget.commentId, commentText.trim());
+        setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
+        setCommentText('');
+        setReplyTarget(null);
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      }
+    } else {
+      // Send Top-level Comment
+      try {
+        const updatedPost = await addComment(token, postId, commentText.trim());
+        setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
+        setCommentText('');
+        setCommentingOn(null);
+      } catch (err) {
+        Alert.alert('Error', err.message);
+      }
     }
+  };
+
+  const startReply = (postId, commentId, username) => {
+    setCommentingOn(postId);
+    setReplyTarget({ postId, commentId, username });
+    setCommentText(`@${username} `);
+  };
+
+  const cancelReply = () => {
+    setReplyTarget(null);
+    setCommentText('');
   };
 
   // ── Delete ──
@@ -133,9 +160,13 @@ export default function FeedScreen({ user, token }) {
 
   const toggleComments = (postId) => {
     setExpandedComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+    if (replyTarget && replyTarget.postId === postId) {
+      setReplyTarget(null);
+    }
   };
 
   const timeAgo = (date) => {
+    if (!date) return '';
     const diff = (Date.now() - new Date(date)) / 1000;
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
@@ -143,7 +174,12 @@ export default function FeedScreen({ user, token }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  const getInitial = (name) => (name ? name[0].toUpperCase() : '?');
+  const getInitial = (name) => (typeof name === 'string' && name.length > 0 ? name[0].toUpperCase() : '?');
+
+  const getCommentsCount = (post) => {
+    if (!post.comments) return 0;
+    return post.comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
+  };
 
   if (loading) {
     return (
@@ -183,6 +219,7 @@ export default function FeedScreen({ user, token }) {
             const isLiked = post.likes?.includes(user?._id);
             const isOwner = post.user?._id === user?._id;
             const showComments = expandedComments[post._id];
+            const isReplyingThisPost = replyTarget && replyTarget.postId === post._id;
 
             return (
               <View key={post._id} style={styles.postCard}>
@@ -230,35 +267,113 @@ export default function FeedScreen({ user, token }) {
 
                   <TouchableOpacity style={styles.actionBtn} onPress={() => toggleComments(post._id)}>
                     <Text style={styles.actionIcon}>💬</Text>
-                    <Text style={styles.actionCount}>{post.comments?.length || 0}</Text>
+                    <Text style={styles.actionCount}>{getCommentsCount(post)}</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Comments */}
+                {/* Comments Section */}
                 {showComments && (
                   <View style={styles.commentsSection}>
-                    {post.comments?.map((c, idx) => (
-                      <View key={idx} style={styles.commentRow}>
-                        <Text style={styles.commentUser}>{c.user?.username || 'User'}</Text>
-                        <Text style={styles.commentBody}>{c.text}</Text>
+                    {post.comments?.length === 0 ? (
+                      <Text style={styles.noCommentsText}>No comments yet. Start the conversation!</Text>
+                    ) : (
+                      post.comments?.map((c) => {
+                        const commentId = c._id || c.id;
+                        return (
+                          <View key={commentId} style={styles.commentItem}>
+                            {/* Main Comment */}
+                            <View style={styles.commentMainRow}>
+                              {c.user?.avatar ? (
+                                <Image source={{ uri: c.user.avatar }} style={styles.commentAvatar} />
+                              ) : (
+                                <View style={styles.commentAvatarPlaceholder}>
+                                  <Text style={styles.commentAvatarText}>{getInitial(c.user?.username)}</Text>
+                                </View>
+                              )}
+                              <View style={styles.commentBubble}>
+                                <View style={styles.commentHeader}>
+                                  <Text style={styles.commentUser}>{c.user?.username || 'User'}</Text>
+                                  <Text style={styles.commentTime}>{timeAgo(c.createdAt)}</Text>
+                                </View>
+                                <Text style={styles.commentBody}>{c.text}</Text>
+                                <TouchableOpacity
+                                  style={styles.replyButton}
+                                  onPress={() => startReply(post._id, commentId, c.user?.username || 'User')}
+                                >
+                                  <Text style={styles.replyButtonText}>↩ Reply</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+
+                            {/* Nested Replies */}
+                            {c.replies && c.replies.length > 0 && (
+                              <View style={styles.repliesList}>
+                                {c.replies.map((reply, rIdx) => (
+                                  <View key={reply._id || rIdx} style={styles.replyMainRow}>
+                                    {reply.user?.avatar ? (
+                                      <Image source={{ uri: reply.user.avatar }} style={styles.replyAvatar} />
+                                    ) : (
+                                      <View style={styles.replyAvatarPlaceholder}>
+                                        <Text style={styles.replyAvatarText}>{getInitial(reply.user?.username)}</Text>
+                                      </View>
+                                    )}
+                                    <View style={styles.replyBubble}>
+                                      <View style={styles.commentHeader}>
+                                        <Text style={styles.replyUser}>{reply.user?.username || 'User'}</Text>
+                                        <Text style={styles.commentTime}>{timeAgo(reply.createdAt)}</Text>
+                                      </View>
+                                      <Text style={styles.replyBody}>{reply.text}</Text>
+                                      <TouchableOpacity
+                                        style={styles.replyButton}
+                                        onPress={() => startReply(post._id, commentId, reply.user?.username || 'User')}
+                                      >
+                                        <Text style={styles.replyButtonText}>↩ Reply</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                  </View>
+                                ))}
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })
+                    )}
+
+                    {/* Active Reply Banner */}
+                    {isReplyingThisPost && (
+                      <View style={styles.replyBanner}>
+                        <Text style={styles.replyBannerText}>
+                          Replying to <Text style={styles.replyBannerUser}>@{replyTarget.username}</Text>
+                        </Text>
+                        <TouchableOpacity onPress={cancelReply} style={styles.replyCancelBtn}>
+                          <Text style={styles.replyCancelText}>✕</Text>
+                        </TouchableOpacity>
                       </View>
-                    ))}
+                    )}
+
+                    {/* Input Row */}
                     <View style={styles.commentInputRow}>
                       <TextInput
                         style={styles.commentInput}
-                        placeholder="Add a comment..."
+                        placeholder={isReplyingThisPost ? `Reply to @${replyTarget.username}...` : "Add a comment..."}
                         placeholderTextColor="#9CA3AF"
                         value={commentingOn === post._id ? commentText : ''}
                         onFocus={() => setCommentingOn(post._id)}
                         onChangeText={setCommentText}
-                        onSubmitEditing={() => handleComment(post._id)}
+                        onSubmitEditing={() => handleSubmitComment(post._id)}
                         returnKeyType="send"
                       />
                       <TouchableOpacity
-                        style={styles.commentSendBtn}
-                        onPress={() => handleComment(post._id)}
+                        style={[
+                          styles.commentSendBtn,
+                          !(commentingOn === post._id && commentText.trim()) && styles.commentSendBtnDisabled,
+                        ]}
+                        disabled={!(commentingOn === post._id && commentText.trim())}
+                        onPress={() => handleSubmitComment(post._id)}
                       >
-                        <Text style={styles.commentSendText}>Post</Text>
+                        <Text style={styles.commentSendText}>
+                          {isReplyingThisPost ? 'Reply' : 'Post'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -377,18 +492,81 @@ const styles = StyleSheet.create({
 
   // Comments
   commentsSection: {
-    borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 14, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: '#FAFAFD',
   },
-  commentRow: { flexDirection: 'row', marginBottom: 8, flexWrap: 'wrap' },
-  commentUser: { fontWeight: '700', color: '#1a1a2e', fontSize: 13, marginRight: 6 },
-  commentBody: { fontSize: 13, color: '#374151', flex: 1 },
-  commentInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  noCommentsText: {
+    fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', marginVertical: 6, textAlign: 'center',
+  },
+  commentItem: {
+    marginBottom: 12,
+  },
+  commentMainRow: {
+    flexDirection: 'row', alignItems: 'flex-start',
+  },
+  commentAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 8, marginTop: 2 },
+  commentAvatarPlaceholder: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: '#EDE9FE',
+    justifyContent: 'center', alignItems: 'center', marginRight: 8, marginTop: 2,
+  },
+  commentAvatarText: { fontSize: 14, fontWeight: '700', color: PURPLE },
+  commentBubble: {
+    flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 14, borderWidth: 1, borderColor: '#F0EFFB',
+  },
+  commentHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2,
+  },
+  commentUser: { fontWeight: '700', color: '#1a1a2e', fontSize: 13 },
+  commentTime: { fontSize: 11, color: '#9CA3AF' },
+  commentBody: { fontSize: 13, color: '#374151', lineHeight: 18 },
+  replyButton: { marginTop: 4, alignSelf: 'flex-start' },
+  replyButtonText: { fontSize: 12, fontWeight: '700', color: PURPLE },
+
+  // Nested Replies
+  repliesList: {
+    marginLeft: 24, marginTop: 6, borderLeftWidth: 2, borderLeftColor: '#DDD6FE', paddingLeft: 10,
+  },
+  replyMainRow: {
+    flexDirection: 'row', alignItems: 'flex-start', marginTop: 6,
+  },
+  replyAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 6, marginTop: 2 },
+  replyAvatarPlaceholder: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: '#EDE9FE',
+    justifyContent: 'center', alignItems: 'center', marginRight: 6, marginTop: 2,
+  },
+  replyAvatarText: { fontSize: 11, fontWeight: '700', color: PURPLE },
+  replyBubble: {
+    flex: 1, backgroundColor: '#F5F3FF', paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 12,
+  },
+  replyUser: { fontWeight: '700', color: '#1a1a2e', fontSize: 12 },
+  replyBody: { fontSize: 12, color: '#374151', lineHeight: 16 },
+
+  // Reply Banner
+  replyBanner: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#EDE9FE', paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 10, marginBottom: 8,
+  },
+  replyBannerText: { fontSize: 12, color: '#5B21B6' },
+  replyBannerUser: { fontWeight: '700', color: PURPLE },
+  replyCancelBtn: { padding: 4 },
+  replyCancelText: { fontSize: 12, fontWeight: '700', color: '#6B7280' },
+
+  // Input
+  commentInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
   commentInput: {
-    flex: 1, backgroundColor: '#F9FAFB', borderRadius: 20, paddingHorizontal: 14,
+    flex: 1, backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 14,
     paddingVertical: 8, fontSize: 13, color: '#1a1a2e', borderWidth: 1, borderColor: '#E5E7EB',
   },
-  commentSendBtn: { paddingHorizontal: 12 },
-  commentSendText: { color: PURPLE, fontWeight: '700', fontSize: 14 },
+  commentSendBtn: {
+    backgroundColor: PURPLE, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
+  },
+  commentSendBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  commentSendText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Modal
   modalOverlay: {

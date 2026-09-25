@@ -279,3 +279,19 @@ export const deletePost = async (token, postId) => {
   if (!response.ok) throw new Error(data.message || 'Failed to delete post');
   return data;
 };
+
+/** Reply to a comment on a post */
+export const replyToComment = async (token, postId, commentId, text) => {
+  const response = await fetch(`${API_URL}/posts/${postId}/comment/${commentId}/reply`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to reply to comment');
+  return data;
+};
+
