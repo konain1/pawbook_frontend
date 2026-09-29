@@ -1,10 +1,6 @@
-import { Platform } from 'react-native';
-
-// Backend API URL
-// - Android Emulator → 10.0.2.2 (maps to host machine's localhost)
-// - iOS Simulator / Physical devices → Mac's LAN IP
-const HOST = Platform.OS === 'android' ? '10.0.2.2' : '192.168.1.6';
-export const API_URL = `http://${HOST}:8000/api`;
+// Production Render Backend URL
+export const BASE_URL = 'https://pawbook-backend-7sa5.onrender.com';
+export const API_URL = `${BASE_URL}/api`;
 
 /**
  * Register a new user

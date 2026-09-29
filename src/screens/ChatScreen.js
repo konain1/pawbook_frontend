@@ -39,7 +39,7 @@ export default function ChatScreen({ user, token, navigation }) {
 
   const scrollViewRef = useRef(null);
 
-  // ─── Fetch Friends & Recent Conversations ─────────────────────
+  // ─── Fetch Friends & Recent Conversations ..
   const loadChatData = useCallback(async () => {
     if (!token) return;
     try {
