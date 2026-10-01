@@ -1,24 +1,110 @@
-// Production Render Backend URL
-export const BASE_URL = 'https://pawbook-backend-7sa5.onrender.com';
+import { Platform } from 'react-native';
+
+// Set to true to connect to your local backend (port 8000), or false for Render production
+const USE_LOCAL_BACKEND = true;
+
+const LOCAL_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+const PROD_URL = 'https://pawbook-backend-7sa5.onrender.com';
+
+export const BASE_URL = USE_LOCAL_BACKEND ? LOCAL_URL : PROD_URL;
 export const API_URL = `${BASE_URL}/api`;
 
 /**
- * Register a new user
+ * Helper to safely parse JSON responses from fetch
+ */
+const safeJson = async (response) => {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('API endpoint not found (404). Please ensure the backend server is running and up-to-date.');
+      }
+      throw new Error(`Server returned HTTP error ${response.status}`);
+    }
+    throw new Error('Invalid response received from server.');
+  }
+};
+
+/**
+ * Send OTP to email for verification
+ * @param {string} email
+ * @param {string} username
+ */
+export const sendOtp = async (email, username = '') => {
+  try {
+    const response = await fetch(`${API_URL}/auth/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, username }),
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send verification code');
+    }
+
+    return data;
+  } catch (error) {
+    if (error.message.includes('Network request failed')) {
+      throw new Error(`Cannot connect to backend (${BASE_URL}). Please ensure backend is running.`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Verify OTP
+ * @param {string} email
+ * @param {string} otp
+ */
+export const verifyOtp = async (email, otp) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, otp }),
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Invalid or expired code');
+    }
+
+    return data;
+  } catch (error) {
+    if (error.message.includes('Network request failed')) {
+      throw new Error(`Cannot connect to backend (${BASE_URL}). Please ensure backend is running.`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Register a new user with verified OTP
  * @param {string} username 
  * @param {string} email 
  * @param {string} password 
+ * @param {string} otp
  */
-export const registerUser = async (username, email, password) => {
+export const registerUser = async (username, email, password, otp) => {
   try {
     const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, otp }),
     });
 
-    const data = await response.json();
+    const data = await safeJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || 'Registration failed');
@@ -27,7 +113,7 @@ export const registerUser = async (username, email, password) => {
     return data;
   } catch (error) {
     if (error.message.includes('Network request failed')) {
-      throw new Error('Cannot connect to server. Please ensure backend is running.');
+      throw new Error(`Cannot connect to backend (${BASE_URL}). Please ensure backend is running.`);
     }
     throw error;
   }
@@ -48,7 +134,7 @@ export const loginUser = async (email, password) => {
       body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
+    const data = await safeJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || 'Login failed');
@@ -57,7 +143,7 @@ export const loginUser = async (email, password) => {
     return data;
   } catch (error) {
     if (error.message.includes('Network request failed')) {
-      throw new Error('Cannot connect to server. Please ensure backend is running.');
+      throw new Error(`Cannot connect to backend (${BASE_URL}). Please ensure backend is running.`);
     }
     throw error;
   }
@@ -72,7 +158,7 @@ export const getProfile = async (token) => {
     const response = await fetch(`${API_URL}/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const data = await response.json();
+    const data = await safeJson(response);
     if (!response.ok) throw new Error(data.message || 'Failed to fetch profile');
     return data;
   } catch (error) {
@@ -90,7 +176,6 @@ export const getProfile = async (token) => {
 export const updateAvatar = async (token, image) => {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
-    // React Native still supports the plain object form inside XHR FormData
     formData.append('avatar', {
       uri: image.uri,
       name: image.name || 'avatar.jpg',
@@ -126,7 +211,7 @@ export const searchUsers = async (token, query) => {
   const response = await fetch(`${API_URL}/users/search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Search failed');
   return data;
 };
@@ -137,7 +222,7 @@ export const sendFriendRequest = async (token, userId) => {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to send request');
   return data;
 };
@@ -147,7 +232,7 @@ export const getPendingRequests = async (token) => {
   const response = await fetch(`${API_URL}/friends/requests`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch requests');
   return data;
 };
@@ -157,7 +242,7 @@ export const getSentRequests = async (token) => {
   const response = await fetch(`${API_URL}/friends/sent`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch sent requests');
   return data;
 };
@@ -167,7 +252,7 @@ export const getFriends = async (token) => {
   const response = await fetch(`${API_URL}/friends`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch friends');
   return data;
 };
@@ -178,7 +263,7 @@ export const acceptFriendRequest = async (token, requestId) => {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to accept');
   return data;
 };
@@ -189,7 +274,7 @@ export const rejectFriendRequest = async (token, requestId) => {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to reject');
   return data;
 };
@@ -201,7 +286,7 @@ export const getAllPosts = async (token) => {
   const response = await fetch(`${API_URL}/posts`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch posts');
   return data;
 };
@@ -245,7 +330,7 @@ export const likePost = async (token, postId) => {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to like post');
   return data;
 };
@@ -260,7 +345,7 @@ export const addComment = async (token, postId, text) => {
     },
     body: JSON.stringify({ text }),
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to add comment');
   return data;
 };
@@ -271,7 +356,7 @@ export const deletePost = async (token, postId) => {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to delete post');
   return data;
 };
@@ -286,8 +371,33 @@ export const replyToComment = async (token, postId, commentId, text) => {
     },
     body: JSON.stringify({ text }),
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to reply to comment');
+  return data;
+};
+
+/** Share a post with optional caption */
+export const sharePost = async (token, postId, caption) => {
+  const response = await fetch(`${API_URL}/posts/${postId}/share`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ caption: caption || '' }),
+  });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data.message || 'Failed to share post');
+  return data;
+};
+
+/** Get users who shared a post */
+export const getPostShares = async (token, postId) => {
+  const response = await fetch(`${API_URL}/posts/${postId}/shares`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data.message || 'Failed to fetch shares');
   return data;
 };
 
@@ -298,7 +408,7 @@ export const getConversationList = async (token) => {
   const response = await fetch(`${API_URL}/chat`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch conversations');
   return data;
 };
@@ -308,7 +418,7 @@ export const getConversation = async (token, friendId) => {
   const response = await fetch(`${API_URL}/chat/${friendId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to fetch conversation');
   return data;
 };
@@ -323,7 +433,7 @@ export const sendMessage = async (token, friendId, text) => {
     },
     body: JSON.stringify({ text }),
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to send message');
   return data;
 };
@@ -334,9 +444,7 @@ export const markMessagesAsRead = async (token, friendId) => {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await response.json();
+  const data = await safeJson(response);
   if (!response.ok) throw new Error(data.message || 'Failed to mark messages as read');
   return data;
 };
-
-

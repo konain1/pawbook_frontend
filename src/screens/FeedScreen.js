@@ -5,7 +5,16 @@ import {
   Modal, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getAllPosts, createPost, likePost, addComment, replyToComment, deletePost } from '../services/api';
+import {
+  getAllPosts,
+  createPost,
+  likePost,
+  addComment,
+  replyToComment,
+  deletePost,
+  sharePost,
+  getPostShares,
+} from '../services/api';
 
 const PURPLE = '#7C3AED';
 const { width } = Dimensions.get('window');
@@ -22,6 +31,16 @@ export default function FeedScreen({ user, token }) {
   const [commentingOn, setCommentingOn] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null); // { postId, commentId, username }
   const [expandedComments, setExpandedComments] = useState({});
+
+  // Share state
+  const [shareTargetPost, setShareTargetPost] = useState(null);
+  const [shareCaption, setShareCaption] = useState('');
+  const [sharing, setSharing] = useState(false);
+
+  // Who shared modal state
+  const [viewingSharesPost, setViewingSharesPost] = useState(null);
+  const [sharesUserList, setSharesUserList] = useState([]);
+  const [loadingSharesList, setLoadingSharesList] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     if (!token) return;
@@ -82,6 +101,47 @@ export default function FeedScreen({ user, token }) {
     }
   };
 
+  // ── Share Post ──
+  const handleOpenShareModal = (post) => {
+    // If it's already a shared post, target the root original post
+    const target = post.isShared && post.originalPost ? post.originalPost : post;
+    setShareTargetPost(target);
+    setShareCaption('');
+  };
+
+  const handleShareSubmit = async () => {
+    if (!shareTargetPost) return;
+    setSharing(true);
+    try {
+      const newPost = await sharePost(token, shareTargetPost._id, shareCaption.trim());
+      setShareTargetPost(null);
+      setShareCaption('');
+      // Prepend the new shared post to feed
+      setPosts(prev => [newPost, ...prev]);
+      Alert.alert('Shared!', 'Post shared successfully to your feed.');
+    } catch (err) {
+      Alert.alert('Share Error', err.message || 'Failed to share post');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  // ── View Who Shared ──
+  const handleViewShares = async (post) => {
+    const rootPostId = post.isShared && post.originalPost ? post.originalPost._id : post._id;
+    setViewingSharesPost(post);
+    setLoadingSharesList(true);
+    try {
+      const shares = await getPostShares(token, rootPostId);
+      setSharesUserList(Array.isArray(shares) ? shares : []);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to load shares');
+      setSharesUserList([]);
+    } finally {
+      setLoadingSharesList(false);
+    }
+  };
+
   // ── Like ──
   const handleLike = async (postId) => {
     try {
@@ -89,12 +149,12 @@ export default function FeedScreen({ user, token }) {
       // Optimistic update
       setPosts(prev => prev.map(p => {
         if (p._id !== postId) return p;
-        const liked = p.likes.includes(user?._id);
+        const liked = p.likes?.includes(user?._id);
         return {
           ...p,
           likes: liked
-            ? p.likes.filter(id => id !== user?._id)
-            : [...p.likes, user?._id],
+            ? (p.likes || []).filter(id => id !== user?._id)
+            : [...(p.likes || []), user?._id],
         };
       }));
     } catch (err) {
@@ -142,7 +202,7 @@ export default function FeedScreen({ user, token }) {
 
   // ── Delete ──
   const handleDelete = (postId) => {
-    Alert.alert('Delete Post', 'Are you sure?', [
+    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
@@ -179,6 +239,13 @@ export default function FeedScreen({ user, token }) {
   const getCommentsCount = (post) => {
     if (!post.comments) return 0;
     return post.comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
+  };
+
+  const getSharesCount = (post) => {
+    if (post.isShared && post.originalPost) {
+      return post.originalPost.shares?.length || 0;
+    }
+    return post.shares?.length || 0;
   };
 
   if (loading) {
@@ -220,44 +287,116 @@ export default function FeedScreen({ user, token }) {
             const isOwner = post.user?._id === user?._id;
             const showComments = expandedComments[post._id];
             const isReplyingThisPost = replyTarget && replyTarget.postId === post._id;
+            const shareCount = getSharesCount(post);
 
             return (
               <View key={post._id} style={styles.postCard}>
-                {/* Post header */}
-                <View style={styles.postHeader}>
-                  {post.user?.avatar ? (
-                    <Image source={{ uri: post.user.avatar }} style={styles.postAvatar} />
-                  ) : (
-                    <View style={styles.postAvatarPlaceholder}>
-                      <Text style={styles.postAvatarText}>{getInitial(post.user?.username)}</Text>
-                    </View>
-                  )}
-                  <View style={styles.postUserInfo}>
-                    <Text style={styles.postUsername}>{post.user?.username || 'Unknown'}</Text>
-                    <Text style={styles.postTime}>{timeAgo(post.createdAt)}</Text>
+                {/* ── If Post is a Shared Post ── */}
+                {post.isShared ? (
+                  <View style={styles.sharedHeaderBadge}>
+                    <Text style={styles.sharedIcon}>🔁</Text>
+                    <Text style={styles.sharedHeaderText}>
+                      <Text style={styles.sharedHeaderUser}>{post.user?.username || 'User'}</Text> shared a post
+                    </Text>
+                    <Text style={styles.sharedTime}>{timeAgo(post.createdAt)}</Text>
+                    {isOwner && (
+                      <TouchableOpacity onPress={() => handleDelete(post._id)} style={styles.deleteBtn}>
+                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                  {isOwner && (
-                    <TouchableOpacity onPress={() => handleDelete(post._id)} style={styles.deleteBtn}>
-                      <Text style={styles.deleteBtnText}>🗑️</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                ) : null}
 
-                {/* Post image */}
-                {post.image && (
-                  <Image source={{ uri: post.image }} style={styles.postImage} resizeMode="cover" />
+                {/* ── Main Author Info (Sharer if shared, or Post Creator) ── */}
+                {!post.isShared && (
+                  <View style={styles.postHeader}>
+                    {post.user?.avatar ? (
+                      <Image source={{ uri: post.user.avatar }} style={styles.postAvatar} />
+                    ) : (
+                      <View style={styles.postAvatarPlaceholder}>
+                        <Text style={styles.postAvatarText}>{getInitial(post.user?.username)}</Text>
+                      </View>
+                    )}
+                    <View style={styles.postUserInfo}>
+                      <Text style={styles.postUsername}>{post.user?.username || 'Unknown'}</Text>
+                      <Text style={styles.postTime}>{timeAgo(post.createdAt)}</Text>
+                    </View>
+                    {isOwner && (
+                      <TouchableOpacity onPress={() => handleDelete(post._id)} style={styles.deleteBtn}>
+                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
 
-                {/* Caption */}
-                {post.caption ? (
+                {/* ── Sharer's Caption (if it's a shared post and sharer wrote something) ── */}
+                {post.isShared && post.caption ? (
+                  <Text style={styles.sharedPostCaption}>
+                    <Text style={styles.captionUser}>{post.user?.username}: </Text>
+                    {post.caption}
+                  </Text>
+                ) : null}
+
+                {/* ── Embedded Original Post if Shared ── */}
+                {post.isShared ? (
+                  post.originalPost ? (
+                    <View style={styles.embeddedPostCard}>
+                      <View style={styles.embeddedHeader}>
+                        {post.originalPost.user?.avatar ? (
+                          <Image source={{ uri: post.originalPost.user.avatar }} style={styles.embeddedAvatar} />
+                        ) : (
+                          <View style={styles.embeddedAvatarPlaceholder}>
+                            <Text style={styles.embeddedAvatarText}>
+                              {getInitial(post.originalPost.user?.username)}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.embeddedUserInfo}>
+                          <Text style={styles.embeddedUsername}>
+                            {post.originalPost.user?.username || 'Original Author'}
+                          </Text>
+                          <Text style={styles.embeddedTime}>{timeAgo(post.originalPost.createdAt)}</Text>
+                        </View>
+                      </View>
+
+                      {post.originalPost.image && (
+                        <Image
+                          source={{ uri: post.originalPost.image }}
+                          style={styles.embeddedImage}
+                          resizeMode="cover"
+                        />
+                      )}
+
+                      {post.originalPost.caption ? (
+                        <Text style={styles.embeddedCaption}>
+                          <Text style={styles.captionUser}>{post.originalPost.user?.username} </Text>
+                          {post.originalPost.caption}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : (
+                    <View style={styles.deletedPostCard}>
+                      <Text style={styles.deletedPostText}>⚠️ Original post was deleted</Text>
+                    </View>
+                  )
+                ) : (
+                  /* ── Regular Post Image ── */
+                  post.image && (
+                    <Image source={{ uri: post.image }} style={styles.postImage} resizeMode="cover" />
+                  )
+                )}
+
+                {/* ── Regular Post Caption ── */}
+                {!post.isShared && post.caption ? (
                   <Text style={styles.caption}>
                     <Text style={styles.captionUser}>{post.user?.username} </Text>
                     {post.caption}
                   </Text>
                 ) : null}
 
-                {/* Actions */}
+                {/* ── Actions Bar ── */}
                 <View style={styles.actions}>
+                  {/* Like Button */}
                   <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(post._id)}>
                     <Text style={styles.actionIcon}>{isLiked ? '❤️' : '🤍'}</Text>
                     <Text style={[styles.actionCount, isLiked && styles.likedCount]}>
@@ -265,13 +404,32 @@ export default function FeedScreen({ user, token }) {
                     </Text>
                   </TouchableOpacity>
 
+                  {/* Comment Button */}
                   <TouchableOpacity style={styles.actionBtn} onPress={() => toggleComments(post._id)}>
                     <Text style={styles.actionIcon}>💬</Text>
                     <Text style={styles.actionCount}>{getCommentsCount(post)}</Text>
                   </TouchableOpacity>
+
+                  {/* Share Button */}
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenShareModal(post)}>
+                    <Text style={styles.actionIcon}>🔁</Text>
+                    <Text style={styles.actionCount}>{shareCount}</Text>
+                  </TouchableOpacity>
+
+                  {/* View Who Shared Pill (if any shares exist) */}
+                  {shareCount > 0 && (
+                    <TouchableOpacity
+                      style={styles.whoSharedPill}
+                      onPress={() => handleViewShares(post)}
+                    >
+                      <Text style={styles.whoSharedPillText}>
+                        {shareCount === 1 ? '1 share' : `${shareCount} shares`} 👥
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                {/* Comments Section */}
+                {/* ── Comments Section ── */}
                 {showComments && (
                   <View style={styles.commentsSection}>
                     {post.comments?.length === 0 ? (
@@ -424,6 +582,124 @@ export default function FeedScreen({ user, token }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── Share Post Modal ── */}
+      <Modal visible={!!shareTargetPost} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => { setShareTargetPost(null); setShareCaption(''); }}>
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>🔁 Share Post</Text>
+              <TouchableOpacity onPress={handleShareSubmit} disabled={sharing}>
+                {sharing
+                  ? <ActivityIndicator color={PURPLE} />
+                  : <Text style={styles.modalPost}>Share Now</Text>
+                }
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.shareCaptionInput}
+              placeholder="Add your thoughts... (optional) 🐾"
+              placeholderTextColor="#9CA3AF"
+              value={shareCaption}
+              onChangeText={setShareCaption}
+              multiline
+              maxLength={500}
+            />
+
+            {/* Target Post Preview */}
+            {shareTargetPost && (
+              <View style={styles.sharePreviewBox}>
+                <View style={styles.sharePreviewHeader}>
+                  {shareTargetPost.user?.avatar ? (
+                    <Image source={{ uri: shareTargetPost.user.avatar }} style={styles.sharePreviewAvatar} />
+                  ) : (
+                    <View style={styles.sharePreviewAvatarPlaceholder}>
+                      <Text style={styles.sharePreviewAvatarText}>
+                        {getInitial(shareTargetPost.user?.username)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.sharePreviewUsername}>
+                    {shareTargetPost.user?.username || 'User'}
+                  </Text>
+                </View>
+
+                {shareTargetPost.image && (
+                  <Image
+                    source={{ uri: shareTargetPost.image }}
+                    style={styles.sharePreviewImage}
+                    resizeMode="cover"
+                  />
+                )}
+
+                {shareTargetPost.caption ? (
+                  <Text style={styles.sharePreviewCaption} numberOfLines={2}>
+                    {shareTargetPost.caption}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Who Shared This Post Modal ── */}
+      <Modal visible={!!viewingSharesPost} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '75%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>👥 Shared By</Text>
+              <TouchableOpacity onPress={() => { setViewingSharesPost(null); setSharesUserList([]); }}>
+                <Text style={styles.modalCancel}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loadingSharesList ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="small" color={PURPLE} />
+                <Text style={styles.modalLoadingText}>Loading shares...</Text>
+              </View>
+            ) : sharesUserList.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Text style={styles.modalEmptyEmoji}>🐾</Text>
+                <Text style={styles.modalEmptyText}>No shares yet</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.sharesListScroll} showsVerticalScrollIndicator={false}>
+                {sharesUserList.map((sharer) => (
+                  <View key={sharer._id} style={styles.sharerItem}>
+                    {sharer.avatar ? (
+                      <Image source={{ uri: sharer.avatar }} style={styles.sharerAvatar} />
+                    ) : (
+                      <View style={styles.sharerAvatarPlaceholder}>
+                        <Text style={styles.sharerAvatarText}>{getInitial(sharer.username)}</Text>
+                      </View>
+                    )}
+                    <View style={styles.sharerInfo}>
+                      <Text style={styles.sharerUsername}>{sharer.username}</Text>
+                      {sharer.bio ? (
+                        <Text style={styles.sharerBio} numberOfLines={1}>{sharer.bio}</Text>
+                      ) : (
+                        <Text style={styles.sharerSub}>Pawbook member</Text>
+                      )}
+                    </View>
+                    <View style={styles.sharerBadge}>
+                      <Text style={styles.sharerBadgeText}>🔁 Shared</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -479,16 +755,61 @@ const styles = StyleSheet.create({
   deleteBtn: { padding: 6 },
   deleteBtnText: { fontSize: 18 },
 
+  // Shared Post Header
+  sharedHeaderBadge: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F3FF',
+    paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EDE9FE',
+  },
+  sharedIcon: { fontSize: 16, marginRight: 6 },
+  sharedHeaderText: { flex: 1, fontSize: 13, color: '#6B7280' },
+  sharedHeaderUser: { fontWeight: '700', color: PURPLE },
+  sharedTime: { fontSize: 11, color: '#9CA3AF', marginRight: 6 },
+  sharedPostCaption: {
+    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6, fontSize: 14, color: '#1F2937', lineHeight: 20,
+  },
+
+  // Embedded Post Card
+  embeddedPostCard: {
+    marginHorizontal: 12, marginVertical: 8, borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#E5E7EB', overflow: 'hidden', backgroundColor: '#FAFAFD',
+  },
+  embeddedHeader: {
+    flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  embeddedAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
+  embeddedAvatarPlaceholder: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#EDE9FE',
+    justifyContent: 'center', alignItems: 'center', marginRight: 8,
+  },
+  embeddedAvatarText: { fontSize: 12, fontWeight: '700', color: PURPLE },
+  embeddedUserInfo: { flex: 1 },
+  embeddedUsername: { fontSize: 13, fontWeight: '700', color: '#1a1a2e' },
+  embeddedTime: { fontSize: 11, color: '#9CA3AF' },
+  embeddedImage: { width: '100%', height: 200, backgroundColor: '#F3F4F6' },
+  embeddedCaption: { padding: 10, fontSize: 13, color: '#374151', lineHeight: 18 },
+
+  deletedPostCard: {
+    margin: 12, padding: 16, backgroundColor: '#FEE2E2', borderRadius: 12, alignItems: 'center',
+  },
+  deletedPostText: { color: '#DC2626', fontSize: 13, fontWeight: '600' },
+
   postImage: { width: '100%', height: width - 32, backgroundColor: '#F3F4F6' },
 
   caption: { paddingHorizontal: 14, paddingTop: 12, fontSize: 14, color: '#374151', lineHeight: 20 },
   captionUser: { fontWeight: '700', color: '#1a1a2e' },
 
-  actions: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 12, gap: 20 },
+  actions: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 18 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  actionIcon: { fontSize: 20 },
+  actionIcon: { fontSize: 19 },
   actionCount: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   likedCount: { color: '#EF4444' },
+
+  whoSharedPill: {
+    marginLeft: 'auto', backgroundColor: '#EDE9FE', paddingHorizontal: 10,
+    paddingVertical: 4, borderRadius: 12,
+  },
+  whoSharedPillText: { fontSize: 12, color: PURPLE, fontWeight: '700' },
 
   // Comments
   commentsSection: {
@@ -568,7 +889,7 @@ const styles = StyleSheet.create({
   },
   commentSendText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  // Modal
+  // Modal Common
   modalOverlay: {
     flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)',
   },
@@ -595,4 +916,52 @@ const styles = StyleSheet.create({
   },
   changeImageBtn: { paddingHorizontal: 20, paddingVertical: 14 },
   changeImageText: { color: PURPLE, fontWeight: '600', fontSize: 15 },
+
+  // Share Modal Styles
+  shareCaptionInput: {
+    paddingHorizontal: 20, paddingVertical: 14, fontSize: 15, color: '#1a1a2e',
+    minHeight: 50, borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  sharePreviewBox: {
+    margin: 16, borderRadius: 14, borderWidth: 1, borderColor: '#EDE9FE',
+    backgroundColor: '#FAF5FF', overflow: 'hidden', padding: 12,
+  },
+  sharePreviewHeader: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 8,
+  },
+  sharePreviewAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 8 },
+  sharePreviewAvatarPlaceholder: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: '#EDE9FE',
+    justifyContent: 'center', alignItems: 'center', marginRight: 8,
+  },
+  sharePreviewAvatarText: { fontSize: 11, fontWeight: '700', color: PURPLE },
+  sharePreviewUsername: { fontSize: 13, fontWeight: '700', color: '#1a1a2e' },
+  sharePreviewImage: { width: '100%', height: 160, borderRadius: 10, marginBottom: 8, backgroundColor: '#E5E7EB' },
+  sharePreviewCaption: { fontSize: 12, color: '#4B5563', lineHeight: 16 },
+
+  // Who Shared Modal Styles
+  modalLoading: { padding: 40, alignItems: 'center', gap: 10 },
+  modalLoadingText: { fontSize: 14, color: '#6B7280' },
+  modalEmpty: { padding: 40, alignItems: 'center' },
+  modalEmptyEmoji: { fontSize: 36, marginBottom: 8 },
+  modalEmptyText: { fontSize: 15, color: '#9CA3AF', fontWeight: '500' },
+  sharesListScroll: { paddingHorizontal: 20, paddingVertical: 10 },
+  sharerItem: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  sharerAvatar: { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
+  sharerAvatarPlaceholder: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EDE9FE',
+    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+  },
+  sharerAvatarText: { fontSize: 18, fontWeight: '700', color: PURPLE },
+  sharerInfo: { flex: 1 },
+  sharerUsername: { fontSize: 15, fontWeight: '700', color: '#1a1a2e' },
+  sharerBio: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  sharerSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  sharerBadge: {
+    backgroundColor: '#F5F3FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+  },
+  sharerBadgeText: { fontSize: 12, fontWeight: '600', color: PURPLE },
 });
