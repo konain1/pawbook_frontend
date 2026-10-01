@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, TextInput, ActivityIndicator, Alert, RefreshControl,
-  Modal, KeyboardAvoidingView, Platform, Dimensions,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -15,21 +26,26 @@ import {
   sharePost,
   getPostShares,
 } from '../services/api';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
-const PURPLE = '#7C3AED';
 const { width } = Dimensions.get('window');
 
 export default function FeedScreen({ user, token }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Create post modal state
   const [showCreate, setShowCreate] = useState(false);
   const [caption, setCaption] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [posting, setPosting] = useState(false);
+
+  // Comment & reply state
   const [commentText, setCommentText] = useState('');
   const [commentingOn, setCommentingOn] = useState(null);
-  const [replyTarget, setReplyTarget] = useState(null); // { postId, commentId, username }
+  const [replyTarget, setReplyTarget] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
 
   // Share state
@@ -56,9 +72,14 @@ export default function FeedScreen({ user, token }) {
     }
   }, [token]);
 
-  useEffect(() => { fetchPosts(); }, [fetchPosts]);
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
-  const onRefresh = () => { setRefreshing(true); fetchPosts(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPosts();
+  };
 
   // ── Pick Image ──
   const handlePickImage = async () => {
@@ -84,7 +105,7 @@ export default function FeedScreen({ user, token }) {
   // ── Create Post ──
   const handleCreatePost = async () => {
     if (!selectedImage) {
-      Alert.alert('Error', 'Please select an image');
+      Alert.alert('Missing Image', 'Please select an image to share.');
       return;
     }
     setPosting(true);
@@ -94,6 +115,7 @@ export default function FeedScreen({ user, token }) {
       setCaption('');
       setSelectedImage(null);
       fetchPosts();
+      Alert.alert('Success 🎉', 'Your cute post was published!');
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
@@ -103,7 +125,6 @@ export default function FeedScreen({ user, token }) {
 
   // ── Share Post ──
   const handleOpenShareModal = (post) => {
-    // If it's already a shared post, target the root original post
     const target = post.isShared && post.originalPost ? post.originalPost : post;
     setShareTargetPost(target);
     setShareCaption('');
@@ -116,9 +137,8 @@ export default function FeedScreen({ user, token }) {
       const newPost = await sharePost(token, shareTargetPost._id, shareCaption.trim());
       setShareTargetPost(null);
       setShareCaption('');
-      // Prepend the new shared post to feed
-      setPosts(prev => [newPost, ...prev]);
-      Alert.alert('Shared!', 'Post shared successfully to your feed.');
+      setPosts((prev) => [newPost, ...prev]);
+      Alert.alert('Shared! 🔁', 'Post shared to your feed!');
     } catch (err) {
       Alert.alert('Share Error', err.message || 'Failed to share post');
     } finally {
@@ -146,17 +166,18 @@ export default function FeedScreen({ user, token }) {
   const handleLike = async (postId) => {
     try {
       await likePost(token, postId);
-      // Optimistic update
-      setPosts(prev => prev.map(p => {
-        if (p._id !== postId) return p;
-        const liked = p.likes?.includes(user?._id);
-        return {
-          ...p,
-          likes: liked
-            ? (p.likes || []).filter(id => id !== user?._id)
-            : [...(p.likes || []), user?._id],
-        };
-      }));
+      setPosts((prev) =>
+        prev.map((p) => {
+          if (p._id !== postId) return p;
+          const liked = p.likes?.includes(user?._id);
+          return {
+            ...p,
+            likes: liked
+              ? (p.likes || []).filter((id) => id !== user?._id)
+              : [...(p.likes || []), user?._id],
+          };
+        })
+      );
     } catch (err) {
       Alert.alert('Error', err.message);
     }
@@ -165,22 +186,25 @@ export default function FeedScreen({ user, token }) {
   // ── Comment / Reply Submit ──
   const handleSubmitComment = async (postId) => {
     if (!commentText.trim()) return;
-    
+
     if (replyTarget && replyTarget.postId === postId) {
-      // Send Reply
       try {
-        const updatedPost = await replyToComment(token, postId, replyTarget.commentId, commentText.trim());
-        setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
+        const updatedPost = await replyToComment(
+          token,
+          postId,
+          replyTarget.commentId,
+          commentText.trim()
+        );
+        setPosts((prev) => prev.map((p) => (p._id === postId ? updatedPost : p)));
         setCommentText('');
         setReplyTarget(null);
       } catch (err) {
         Alert.alert('Error', err.message);
       }
     } else {
-      // Send Top-level Comment
       try {
         const updatedPost = await addComment(token, postId, commentText.trim());
-        setPosts(prev => prev.map(p => p._id === postId ? updatedPost : p));
+        setPosts((prev) => prev.map((p) => (p._id === postId ? updatedPost : p)));
         setCommentText('');
         setCommentingOn(null);
       } catch (err) {
@@ -202,14 +226,15 @@ export default function FeedScreen({ user, token }) {
 
   // ── Delete ──
   const handleDelete = (postId) => {
-    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+    Alert.alert('Delete Post', 'Are you sure you want to remove this post?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: 'Delete',
+        style: 'destructive',
         onPress: async () => {
           try {
             await deletePost(token, postId);
-            setPosts(prev => prev.filter(p => p._id !== postId));
+            setPosts((prev) => prev.filter((p) => p._id !== postId));
           } catch (err) {
             Alert.alert('Error', err.message);
           }
@@ -219,7 +244,7 @@ export default function FeedScreen({ user, token }) {
   };
 
   const toggleComments = (postId) => {
-    setExpandedComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+    setExpandedComments((prev) => ({ ...prev, [postId]: !prev[postId] }));
     if (replyTarget && replyTarget.postId === postId) {
       setReplyTarget(null);
     }
@@ -234,7 +259,8 @@ export default function FeedScreen({ user, token }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  const getInitial = (name) => (typeof name === 'string' && name.length > 0 ? name[0].toUpperCase() : '?');
+  const getInitial = (name) =>
+    typeof name === 'string' && name.length > 0 ? name[0].toUpperCase() : '?';
 
   const getCommentsCount = (post) => {
     if (!post.comments) return 0;
@@ -251,7 +277,9 @@ export default function FeedScreen({ user, token }) {
   if (loading) {
     return (
       <View style={styles.loadingView}>
-        <ActivityIndicator size="large" color={PURPLE} />
+        <CatMascot size={70} />
+        <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 16 }} />
+        <Text style={styles.loadingText}>Fetching cute moments…</Text>
       </View>
     );
   }
@@ -261,24 +289,42 @@ export default function FeedScreen({ user, token }) {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={THEME.colors.primary}
+          />
+        }
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* ── Top Header ── */}
         <View style={styles.header}>
-          <Text style={styles.title}>🐾 Feed</Text>
-          <TouchableOpacity style={styles.newPostBtn} onPress={handlePickImage}>
-            <Text style={styles.newPostBtnText}>+ New Post</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerGreeting}>Good day, {user?.username || 'Friend'} 🐾</Text>
+            <Text style={styles.headerTitle}>Pawbook Feed</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.newPostPillBtn}
+            onPress={handlePickImage}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.newPostPlus}>+</Text>
+            <Text style={styles.newPostText}>New Post</Text>
           </TouchableOpacity>
         </View>
 
+        {/* ── Posts Stream ── */}
         {posts.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>📷</Text>
+            <CatMascot size={80} />
             <Text style={styles.emptyTitle}>No posts yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to share something!</Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={handlePickImage}>
-              <Text style={styles.emptyBtnText}>Create Post</Text>
+            <Text style={styles.emptySubtext}>
+              Be the first to share a cute pet moment with friends!
+            </Text>
+            <TouchableOpacity style={styles.emptyActionBtn} onPress={handlePickImage}>
+              <Text style={styles.emptyActionText}>📸 Share a Photo</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -291,71 +337,89 @@ export default function FeedScreen({ user, token }) {
 
             return (
               <View key={post._id} style={styles.postCard}>
-                {/* ── If Post is a Shared Post ── */}
-                {post.isShared ? (
-                  <View style={styles.sharedHeaderBadge}>
-                    <Text style={styles.sharedIcon}>🔁</Text>
-                    <Text style={styles.sharedHeaderText}>
-                      <Text style={styles.sharedHeaderUser}>{post.user?.username || 'User'}</Text> shared a post
-                    </Text>
-                    <Text style={styles.sharedTime}>{timeAgo(post.createdAt)}</Text>
-                    {isOwner && (
-                      <TouchableOpacity onPress={() => handleDelete(post._id)} style={styles.deleteBtn}>
-                        <Text style={styles.deleteBtnText}>🗑️</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : null}
-
-                {/* ── Main Author Info (Sharer if shared, or Post Creator) ── */}
-                {!post.isShared && (
-                  <View style={styles.postHeader}>
-                    {post.user?.avatar ? (
-                      <Image source={{ uri: post.user.avatar }} style={styles.postAvatar} />
-                    ) : (
-                      <View style={styles.postAvatarPlaceholder}>
-                        <Text style={styles.postAvatarText}>{getInitial(post.user?.username)}</Text>
-                      </View>
-                    )}
-                    <View style={styles.postUserInfo}>
-                      <Text style={styles.postUsername}>{post.user?.username || 'Unknown'}</Text>
-                      <Text style={styles.postTime}>{timeAgo(post.createdAt)}</Text>
+                {/* ── Shared Post Badge Header ── */}
+                {post.isShared && (
+                  <View style={styles.sharedBadgeRow}>
+                    <View style={styles.sharedBadgePill}>
+                      <Text style={styles.sharedBadgeIcon}>🔁</Text>
+                      <Text style={styles.sharedBadgeText}>
+                        <Text style={styles.sharedBadgeUsername}>
+                          {post.user?.username || 'User'}
+                        </Text>{' '}
+                        shared a post
+                      </Text>
                     </View>
+                    <Text style={styles.sharedTimeText}>{timeAgo(post.createdAt)}</Text>
                     {isOwner && (
-                      <TouchableOpacity onPress={() => handleDelete(post._id)} style={styles.deleteBtn}>
-                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(post._id)}
+                        style={styles.deletePostBtn}
+                      >
+                        <Text style={styles.deleteIconText}>🗑️</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 )}
 
-                {/* ── Sharer's Caption (if it's a shared post and sharer wrote something) ── */}
+                {/* ── Main Author Header (If regular post) ── */}
+                {!post.isShared && (
+                  <View style={styles.authorHeader}>
+                    {post.user?.avatar ? (
+                      <Image source={{ uri: post.user.avatar }} style={styles.authorAvatar} />
+                    ) : (
+                      <View style={styles.authorAvatarPlaceholder}>
+                        <Text style={styles.authorAvatarInitial}>
+                          {getInitial(post.user?.username)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.authorInfo}>
+                      <Text style={styles.authorName}>{post.user?.username || 'Pawbook User'}</Text>
+                      <Text style={styles.authorTime}>{timeAgo(post.createdAt)}</Text>
+                    </View>
+                    {isOwner && (
+                      <TouchableOpacity
+                        onPress={() => handleDelete(post._id)}
+                        style={styles.deletePostBtn}
+                      >
+                        <Text style={styles.deleteIconText}>🗑️</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
+                {/* ── Sharer's Caption ── */}
                 {post.isShared && post.caption ? (
-                  <Text style={styles.sharedPostCaption}>
-                    <Text style={styles.captionUser}>{post.user?.username}: </Text>
+                  <Text style={styles.sharerCaption}>
+                    <Text style={styles.captionUsername}>{post.user?.username}: </Text>
                     {post.caption}
                   </Text>
                 ) : null}
 
-                {/* ── Embedded Original Post if Shared ── */}
+                {/* ── Embedded Original Post Card ── */}
                 {post.isShared ? (
                   post.originalPost ? (
-                    <View style={styles.embeddedPostCard}>
+                    <View style={styles.embeddedCard}>
                       <View style={styles.embeddedHeader}>
                         {post.originalPost.user?.avatar ? (
-                          <Image source={{ uri: post.originalPost.user.avatar }} style={styles.embeddedAvatar} />
+                          <Image
+                            source={{ uri: post.originalPost.user.avatar }}
+                            style={styles.embeddedAvatar}
+                          />
                         ) : (
                           <View style={styles.embeddedAvatarPlaceholder}>
-                            <Text style={styles.embeddedAvatarText}>
+                            <Text style={styles.embeddedAvatarInitial}>
                               {getInitial(post.originalPost.user?.username)}
                             </Text>
                           </View>
                         )}
-                        <View style={styles.embeddedUserInfo}>
-                          <Text style={styles.embeddedUsername}>
+                        <View style={styles.embeddedAuthorInfo}>
+                          <Text style={styles.embeddedAuthorName}>
                             {post.originalPost.user?.username || 'Original Author'}
                           </Text>
-                          <Text style={styles.embeddedTime}>{timeAgo(post.originalPost.createdAt)}</Text>
+                          <Text style={styles.embeddedTime}>
+                            {timeAgo(post.originalPost.createdAt)}
+                          </Text>
                         </View>
                       </View>
 
@@ -369,58 +433,77 @@ export default function FeedScreen({ user, token }) {
 
                       {post.originalPost.caption ? (
                         <Text style={styles.embeddedCaption}>
-                          <Text style={styles.captionUser}>{post.originalPost.user?.username} </Text>
+                          <Text style={styles.captionUsername}>
+                            {post.originalPost.user?.username}{' '}
+                          </Text>
                           {post.originalPost.caption}
                         </Text>
                       ) : null}
                     </View>
                   ) : (
                     <View style={styles.deletedPostCard}>
-                      <Text style={styles.deletedPostText}>⚠️ Original post was deleted</Text>
+                      <Text style={styles.deletedPostText}>⚠️ Original post was removed</Text>
                     </View>
                   )
                 ) : (
                   /* ── Regular Post Image ── */
                   post.image && (
-                    <Image source={{ uri: post.image }} style={styles.postImage} resizeMode="cover" />
+                    <Image
+                      source={{ uri: post.image }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
                   )
                 )}
 
                 {/* ── Regular Post Caption ── */}
                 {!post.isShared && post.caption ? (
-                  <Text style={styles.caption}>
-                    <Text style={styles.captionUser}>{post.user?.username} </Text>
+                  <Text style={styles.postCaption}>
+                    <Text style={styles.captionUsername}>{post.user?.username} </Text>
                     {post.caption}
                   </Text>
                 ) : null}
 
-                {/* ── Actions Bar ── */}
-                <View style={styles.actions}>
+                {/* ── Action Buttons Bar ── */}
+                <View style={styles.actionsBar}>
                   {/* Like Button */}
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleLike(post._id)}>
-                    <Text style={styles.actionIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-                    <Text style={[styles.actionCount, isLiked && styles.likedCount]}>
+                  <TouchableOpacity
+                    style={[styles.actionChip, isLiked && styles.likedActionChip]}
+                    onPress={() => handleLike(post._id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionIconText}>{isLiked ? '❤️' : '🤍'}</Text>
+                    <Text style={[styles.actionCountText, isLiked && styles.likedCountText]}>
                       {post.likes?.length || 0}
                     </Text>
                   </TouchableOpacity>
 
                   {/* Comment Button */}
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => toggleComments(post._id)}>
-                    <Text style={styles.actionIcon}>💬</Text>
-                    <Text style={styles.actionCount}>{getCommentsCount(post)}</Text>
+                  <TouchableOpacity
+                    style={styles.actionChip}
+                    onPress={() => toggleComments(post._id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionIconText}>💬</Text>
+                    <Text style={styles.actionCountText}>{getCommentsCount(post)}</Text>
                   </TouchableOpacity>
 
                   {/* Share Button */}
-                  <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenShareModal(post)}>
-                    <Text style={styles.actionIcon}>🔁</Text>
-                    <Text style={styles.actionCount}>{shareCount}</Text>
+                  <TouchableOpacity
+                    style={styles.actionChip}
+                    onPress={() => handleOpenShareModal(post)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionIconText}>🔁</Text>
+                    <Text style={styles.actionCountText}>{shareCount}</Text>
                   </TouchableOpacity>
 
-                  {/* View Who Shared Pill (if any shares exist) */}
+                  {/* Who Shared Pill */}
                   {shareCount > 0 && (
                     <TouchableOpacity
                       style={styles.whoSharedPill}
                       onPress={() => handleViewShares(post)}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.whoSharedPillText}>
                         {shareCount === 1 ? '1 share' : `${shareCount} shares`} 👥
@@ -431,59 +514,87 @@ export default function FeedScreen({ user, token }) {
 
                 {/* ── Comments Section ── */}
                 {showComments && (
-                  <View style={styles.commentsSection}>
+                  <View style={styles.commentsContainer}>
                     {post.comments?.length === 0 ? (
-                      <Text style={styles.noCommentsText}>No comments yet. Start the conversation!</Text>
+                      <Text style={styles.noCommentsText}>
+                        No comments yet. Say something friendly! 🐾
+                      </Text>
                     ) : (
                       post.comments?.map((c) => {
                         const commentId = c._id || c.id;
                         return (
                           <View key={commentId} style={styles.commentItem}>
                             {/* Main Comment */}
-                            <View style={styles.commentMainRow}>
+                            <View style={styles.commentRow}>
                               {c.user?.avatar ? (
-                                <Image source={{ uri: c.user.avatar }} style={styles.commentAvatar} />
+                                <Image
+                                  source={{ uri: c.user.avatar }}
+                                  style={styles.commentAvatar}
+                                />
                               ) : (
                                 <View style={styles.commentAvatarPlaceholder}>
-                                  <Text style={styles.commentAvatarText}>{getInitial(c.user?.username)}</Text>
+                                  <Text style={styles.commentAvatarInitial}>
+                                    {getInitial(c.user?.username)}
+                                  </Text>
                                 </View>
                               )}
                               <View style={styles.commentBubble}>
                                 <View style={styles.commentHeader}>
-                                  <Text style={styles.commentUser}>{c.user?.username || 'User'}</Text>
-                                  <Text style={styles.commentTime}>{timeAgo(c.createdAt)}</Text>
+                                  <Text style={styles.commentUsername}>
+                                    {c.user?.username || 'User'}
+                                  </Text>
+                                  <Text style={styles.commentTime}>
+                                    {timeAgo(c.createdAt)}
+                                  </Text>
                                 </View>
-                                <Text style={styles.commentBody}>{c.text}</Text>
+                                <Text style={styles.commentBodyText}>{c.text}</Text>
                                 <TouchableOpacity
                                   style={styles.replyButton}
-                                  onPress={() => startReply(post._id, commentId, c.user?.username || 'User')}
+                                  onPress={() =>
+                                    startReply(post._id, commentId, c.user?.username || 'User')
+                                  }
                                 >
                                   <Text style={styles.replyButtonText}>↩ Reply</Text>
                                 </TouchableOpacity>
                               </View>
                             </View>
 
-                            {/* Nested Replies */}
+                            {/* Threaded Replies */}
                             {c.replies && c.replies.length > 0 && (
                               <View style={styles.repliesList}>
                                 {c.replies.map((reply, rIdx) => (
-                                  <View key={reply._id || rIdx} style={styles.replyMainRow}>
+                                  <View key={reply._id || rIdx} style={styles.replyRow}>
                                     {reply.user?.avatar ? (
-                                      <Image source={{ uri: reply.user.avatar }} style={styles.replyAvatar} />
+                                      <Image
+                                        source={{ uri: reply.user.avatar }}
+                                        style={styles.replyAvatar}
+                                      />
                                     ) : (
                                       <View style={styles.replyAvatarPlaceholder}>
-                                        <Text style={styles.replyAvatarText}>{getInitial(reply.user?.username)}</Text>
+                                        <Text style={styles.replyAvatarInitial}>
+                                          {getInitial(reply.user?.username)}
+                                        </Text>
                                       </View>
                                     )}
                                     <View style={styles.replyBubble}>
                                       <View style={styles.commentHeader}>
-                                        <Text style={styles.replyUser}>{reply.user?.username || 'User'}</Text>
-                                        <Text style={styles.commentTime}>{timeAgo(reply.createdAt)}</Text>
+                                        <Text style={styles.replyUsername}>
+                                          {reply.user?.username || 'User'}
+                                        </Text>
+                                        <Text style={styles.commentTime}>
+                                          {timeAgo(reply.createdAt)}
+                                        </Text>
                                       </View>
-                                      <Text style={styles.replyBody}>{reply.text}</Text>
+                                      <Text style={styles.replyBodyText}>{reply.text}</Text>
                                       <TouchableOpacity
                                         style={styles.replyButton}
-                                        onPress={() => startReply(post._id, commentId, reply.user?.username || 'User')}
+                                        onPress={() =>
+                                          startReply(
+                                            post._id,
+                                            commentId,
+                                            reply.user?.username || 'User'
+                                          )
+                                        }
                                       >
                                         <Text style={styles.replyButtonText}>↩ Reply</Text>
                                       </TouchableOpacity>
@@ -499,22 +610,29 @@ export default function FeedScreen({ user, token }) {
 
                     {/* Active Reply Banner */}
                     {isReplyingThisPost && (
-                      <View style={styles.replyBanner}>
-                        <Text style={styles.replyBannerText}>
-                          Replying to <Text style={styles.replyBannerUser}>@{replyTarget.username}</Text>
+                      <View style={styles.activeReplyBanner}>
+                        <Text style={styles.activeReplyText}>
+                          Replying to{' '}
+                          <Text style={styles.activeReplyUsername}>
+                            @{replyTarget.username}
+                          </Text>
                         </Text>
-                        <TouchableOpacity onPress={cancelReply} style={styles.replyCancelBtn}>
-                          <Text style={styles.replyCancelText}>✕</Text>
+                        <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyBtn}>
+                          <Text style={styles.cancelReplyText}>✕</Text>
                         </TouchableOpacity>
                       </View>
                     )}
 
-                    {/* Input Row */}
+                    {/* Comment Input */}
                     <View style={styles.commentInputRow}>
                       <TextInput
-                        style={styles.commentInput}
-                        placeholder={isReplyingThisPost ? `Reply to @${replyTarget.username}...` : "Add a comment..."}
-                        placeholderTextColor="#9CA3AF"
+                        style={styles.commentTextInput}
+                        placeholder={
+                          isReplyingThisPost
+                            ? `Reply to @${replyTarget.username}...`
+                            : 'Write a friendly comment...'
+                        }
+                        placeholderTextColor={THEME.colors.textLight}
                         value={commentingOn === post._id ? commentText : ''}
                         onFocus={() => setCommentingOn(post._id)}
                         onChangeText={setCommentText}
@@ -524,7 +642,8 @@ export default function FeedScreen({ user, token }) {
                       <TouchableOpacity
                         style={[
                           styles.commentSendBtn,
-                          !(commentingOn === post._id && commentText.trim()) && styles.commentSendBtnDisabled,
+                          !(commentingOn === post._id && commentText.trim()) &&
+                            styles.commentSendBtnDisabled,
                         ]}
                         disabled={!(commentingOn === post._id && commentText.trim())}
                         onPress={() => handleSubmitComment(post._id)}
@@ -550,26 +669,37 @@ export default function FeedScreen({ user, token }) {
         >
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => { setShowCreate(false); setSelectedImage(null); setCaption(''); }}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCreate(false);
+                  setSelectedImage(null);
+                  setCaption('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>New Post</Text>
+              <Text style={styles.modalTitleText}>New Cute Post 🐾</Text>
               <TouchableOpacity onPress={handleCreatePost} disabled={posting}>
-                {posting
-                  ? <ActivityIndicator color={PURPLE} />
-                  : <Text style={styles.modalPost}>Share</Text>
-                }
+                {posting ? (
+                  <ActivityIndicator color={THEME.colors.primary} />
+                ) : (
+                  <Text style={styles.modalPostActionText}>Share</Text>
+                )}
               </TouchableOpacity>
             </View>
 
             {selectedImage && (
-              <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} resizeMode="cover" />
+              <Image
+                source={{ uri: selectedImage.uri }}
+                style={styles.previewImage}
+                resizeMode="cover"
+              />
             )}
 
             <TextInput
-              style={styles.captionInput}
-              placeholder="Write a caption... 🐾"
-              placeholderTextColor="#9CA3AF"
+              style={styles.captionTextInput}
+              placeholder="What's your pet doing today? 🐾"
+              placeholderTextColor={THEME.colors.textLight}
               value={caption}
               onChangeText={setCaption}
               multiline
@@ -577,13 +707,13 @@ export default function FeedScreen({ user, token }) {
             />
 
             <TouchableOpacity style={styles.changeImageBtn} onPress={handlePickImage}>
-              <Text style={styles.changeImageText}>📷 Change Image</Text>
+              <Text style={styles.changeImageBtnText}>📷 Change Photo</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── Share Post Modal ── */}
+      {/* ── Share Modal ── */}
       <Modal visible={!!shareTargetPost} animationType="slide" transparent>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -591,37 +721,46 @@ export default function FeedScreen({ user, token }) {
         >
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => { setShareTargetPost(null); setShareCaption(''); }}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShareTargetPost(null);
+                  setShareCaption('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>🔁 Share Post</Text>
+              <Text style={styles.modalTitleText}>🔁 Share Post</Text>
               <TouchableOpacity onPress={handleShareSubmit} disabled={sharing}>
-                {sharing
-                  ? <ActivityIndicator color={PURPLE} />
-                  : <Text style={styles.modalPost}>Share Now</Text>
-                }
+                {sharing ? (
+                  <ActivityIndicator color={THEME.colors.primary} />
+                ) : (
+                  <Text style={styles.modalPostActionText}>Share Now</Text>
+                )}
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={styles.shareCaptionInput}
+              style={styles.shareCaptionTextInput}
               placeholder="Add your thoughts... (optional) 🐾"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={THEME.colors.textLight}
               value={shareCaption}
               onChangeText={setShareCaption}
               multiline
               maxLength={500}
             />
 
-            {/* Target Post Preview */}
+            {/* Target Post Preview Box */}
             {shareTargetPost && (
-              <View style={styles.sharePreviewBox}>
-                <View style={styles.sharePreviewHeader}>
+              <View style={styles.sharePreviewCard}>
+                <View style={styles.sharePreviewAuthor}>
                   {shareTargetPost.user?.avatar ? (
-                    <Image source={{ uri: shareTargetPost.user.avatar }} style={styles.sharePreviewAvatar} />
+                    <Image
+                      source={{ uri: shareTargetPost.user.avatar }}
+                      style={styles.sharePreviewAvatar}
+                    />
                   ) : (
                     <View style={styles.sharePreviewAvatarPlaceholder}>
-                      <Text style={styles.sharePreviewAvatarText}>
+                      <Text style={styles.sharePreviewInitial}>
                         {getInitial(shareTargetPost.user?.username)}
                       </Text>
                     </View>
@@ -640,7 +779,7 @@ export default function FeedScreen({ user, token }) {
                 )}
 
                 {shareTargetPost.caption ? (
-                  <Text style={styles.sharePreviewCaption} numberOfLines={2}>
+                  <Text style={styles.sharePreviewCaptionText} numberOfLines={2}>
                     {shareTargetPost.caption}
                   </Text>
                 ) : null}
@@ -650,47 +789,52 @@ export default function FeedScreen({ user, token }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── Who Shared This Post Modal ── */}
+      {/* ── Who Shared Modal ── */}
       <Modal visible={!!viewingSharesPost} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { maxHeight: '75%' }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>👥 Shared By</Text>
-              <TouchableOpacity onPress={() => { setViewingSharesPost(null); setSharesUserList([]); }}>
-                <Text style={styles.modalCancel}>Close</Text>
+              <Text style={styles.modalTitleText}>👥 Shared By</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setViewingSharesPost(null);
+                  setSharesUserList([]);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Close</Text>
               </TouchableOpacity>
             </View>
 
             {loadingSharesList ? (
-              <View style={styles.modalLoading}>
-                <ActivityIndicator size="small" color={PURPLE} />
+              <View style={styles.modalLoadingBox}>
+                <ActivityIndicator size="small" color={THEME.colors.primary} />
                 <Text style={styles.modalLoadingText}>Loading shares...</Text>
               </View>
             ) : sharesUserList.length === 0 ? (
-              <View style={styles.modalEmpty}>
-                <Text style={styles.modalEmptyEmoji}>🐾</Text>
+              <View style={styles.modalEmptyBox}>
+                <CatMascot size={60} />
                 <Text style={styles.modalEmptyText}>No shares yet</Text>
               </View>
             ) : (
               <ScrollView style={styles.sharesListScroll} showsVerticalScrollIndicator={false}>
                 {sharesUserList.map((sharer) => (
-                  <View key={sharer._id} style={styles.sharerItem}>
+                  <View key={sharer._id} style={styles.sharerRow}>
                     {sharer.avatar ? (
-                      <Image source={{ uri: sharer.avatar }} style={styles.sharerAvatar} />
+                      <Image source={{ uri: sharer.avatar }} style={styles.sharerAvatarImage} />
                     ) : (
                       <View style={styles.sharerAvatarPlaceholder}>
-                        <Text style={styles.sharerAvatarText}>{getInitial(sharer.username)}</Text>
+                        <Text style={styles.sharerAvatarInitial}>
+                          {getInitial(sharer.username)}
+                        </Text>
                       </View>
                     )}
-                    <View style={styles.sharerInfo}>
-                      <Text style={styles.sharerUsername}>{sharer.username}</Text>
-                      {sharer.bio ? (
-                        <Text style={styles.sharerBio} numberOfLines={1}>{sharer.bio}</Text>
-                      ) : (
-                        <Text style={styles.sharerSub}>Pawbook member</Text>
-                      )}
+                    <View style={styles.sharerDetails}>
+                      <Text style={styles.sharerUsernameText}>{sharer.username}</Text>
+                      <Text style={styles.sharerBioText} numberOfLines={1}>
+                        {sharer.bio || 'Pawbook friend 🐾'}
+                      </Text>
                     </View>
-                    <View style={styles.sharerBadge}>
+                    <View style={styles.sharerBadgePill}>
                       <Text style={styles.sharerBadgeText}>🔁 Shared</Text>
                     </View>
                   </View>
@@ -705,263 +849,534 @@ export default function FeedScreen({ user, token }) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#F5F3FF' },
+  wrapper: { flex: 1, backgroundColor: THEME.colors.background },
   container: { flex: 1 },
-  content: { paddingBottom: 100 },
-  loadingView: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F3FF' },
+  content: { paddingBottom: 110 },
+  loadingView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    fontWeight: '600',
+  },
 
+  // ── Header ──
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#1a1a2e' },
-  newPostBtn: {
-    backgroundColor: PURPLE, paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, shadowColor: PURPLE, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+  headerLeft: { flex: 1 },
+  headerGreeting: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primaryDark,
+    marginBottom: 2,
   },
-  newPostBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.5,
+  },
+  newPostPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 4,
+  },
+  newPostPlus: { color: '#fff', fontSize: 18, fontWeight: '800', marginTop: -2 },
+  newPostText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
-  // Empty
+  // ── Empty State ──
   emptyCard: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 40, alignItems: 'center',
-    margin: 20, shadowColor: PURPLE, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 36,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
   },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a2e', marginBottom: 6 },
-  emptySubtext: { fontSize: 14, color: '#9CA3AF', marginBottom: 20 },
-  emptyBtn: {
-    backgroundColor: PURPLE, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20,
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginTop: 14,
+    marginBottom: 6,
   },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  emptySubtext: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  emptyActionBtn: {
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  emptyActionText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
-  // Post card
+  // ── Post Card ──
   postCard: {
-    backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 16,
-    borderRadius: 20, overflow: 'hidden',
-    shadowColor: PURPLE, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
-  },
-  postHeader: {
-    flexDirection: 'row', alignItems: 'center', padding: 14,
-  },
-  postAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 12 },
-  postAvatarPlaceholder: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
-  },
-  postAvatarText: { fontSize: 18, fontWeight: '700', color: PURPLE },
-  postUserInfo: { flex: 1 },
-  postUsername: { fontSize: 15, fontWeight: '700', color: '#1a1a2e' },
-  postTime: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
-  deleteBtn: { padding: 6 },
-  deleteBtnText: { fontSize: 18 },
-
-  // Shared Post Header
-  sharedHeaderBadge: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F3FF',
-    paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EDE9FE',
-  },
-  sharedIcon: { fontSize: 16, marginRight: 6 },
-  sharedHeaderText: { flex: 1, fontSize: 13, color: '#6B7280' },
-  sharedHeaderUser: { fontWeight: '700', color: PURPLE },
-  sharedTime: { fontSize: 11, color: '#9CA3AF', marginRight: 6 },
-  sharedPostCaption: {
-    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6, fontSize: 14, color: '#1F2937', lineHeight: 20,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 18,
+    marginBottom: 16,
+    borderRadius: 26,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 3,
   },
 
-  // Embedded Post Card
-  embeddedPostCard: {
-    marginHorizontal: 12, marginVertical: 8, borderRadius: 16,
-    borderWidth: 1.5, borderColor: '#E5E7EB', overflow: 'hidden', backgroundColor: '#FAFAFD',
+  // Shared Header
+  sharedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7F2',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FEE8DC',
+  },
+  sharedBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 6,
+  },
+  sharedBadgeIcon: { fontSize: 15 },
+  sharedBadgeText: { fontSize: 13, color: THEME.colors.textSecondary },
+  sharedBadgeUsername: { fontWeight: '800', color: THEME.colors.primaryDark },
+  sharedTimeText: { fontSize: 11, color: THEME.colors.textLight, marginRight: 8 },
+  sharerCaption: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+    fontSize: 14,
+    color: THEME.colors.text,
+    lineHeight: 20,
+  },
+
+  // Author Header
+  authorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  authorAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    marginRight: 12,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+  },
+  authorAvatarPlaceholder: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  authorAvatarInitial: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
+  },
+  authorInfo: { flex: 1 },
+  authorName: { fontSize: 15, fontWeight: '800', color: THEME.colors.text },
+  authorTime: { fontSize: 12, color: THEME.colors.textLight, marginTop: 1 },
+  deletePostBtn: { padding: 6 },
+  deleteIconText: { fontSize: 16 },
+
+  // Embedded Shared Card
+  embeddedCard: {
+    marginHorizontal: 14,
+    marginVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#F2E6DF',
+    backgroundColor: '#FFFDFB',
+    overflow: 'hidden',
   },
   embeddedHeader: {
-    flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8ECE5',
   },
   embeddedAvatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
   embeddedAvatarPlaceholder: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
-  embeddedAvatarText: { fontSize: 12, fontWeight: '700', color: PURPLE },
-  embeddedUserInfo: { flex: 1 },
-  embeddedUsername: { fontSize: 13, fontWeight: '700', color: '#1a1a2e' },
-  embeddedTime: { fontSize: 11, color: '#9CA3AF' },
-  embeddedImage: { width: '100%', height: 200, backgroundColor: '#F3F4F6' },
-  embeddedCaption: { padding: 10, fontSize: 13, color: '#374151', lineHeight: 18 },
+  embeddedAvatarInitial: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
+  },
+  embeddedAuthorInfo: { flex: 1 },
+  embeddedAuthorName: { fontSize: 13, fontWeight: '800', color: THEME.colors.text },
+  embeddedTime: { fontSize: 11, color: THEME.colors.textLight },
+  embeddedImage: { width: '100%', height: 210, backgroundColor: '#F8ECE5' },
+  embeddedCaption: { padding: 12, fontSize: 13, color: THEME.colors.text, lineHeight: 18 },
 
   deletedPostCard: {
-    margin: 12, padding: 16, backgroundColor: '#FEE2E2', borderRadius: 12, alignItems: 'center',
+    margin: 14,
+    padding: 16,
+    backgroundColor: '#FFF0F0',
+    borderRadius: 16,
+    alignItems: 'center',
   },
-  deletedPostText: { color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  deletedPostText: { color: THEME.colors.error, fontSize: 13, fontWeight: '700' },
 
-  postImage: { width: '100%', height: width - 32, backgroundColor: '#F3F4F6' },
+  // Post Image & Caption
+  postImage: {
+    width: '100%',
+    height: width - 36,
+    backgroundColor: '#F8ECE5',
+  },
+  postCaption: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    fontSize: 14,
+    color: THEME.colors.text,
+    lineHeight: 20,
+  },
+  captionUsername: { fontWeight: '800', color: THEME.colors.text },
 
-  caption: { paddingHorizontal: 14, paddingTop: 12, fontSize: 14, color: '#374151', lineHeight: 20 },
-  captionUser: { fontWeight: '700', color: '#1a1a2e' },
-
-  actions: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, gap: 18 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  actionIcon: { fontSize: 19 },
-  actionCount: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  likedCount: { color: '#EF4444' },
+  // Action Chips
+  actionsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8F4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F8E8DF',
+    gap: 6,
+  },
+  likedActionChip: {
+    backgroundColor: '#FFF0F0',
+    borderColor: '#FED7D7',
+  },
+  actionIconText: { fontSize: 16 },
+  actionCountText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+  },
+  likedCountText: { color: '#E53E3E' },
 
   whoSharedPill: {
-    marginLeft: 'auto', backgroundColor: '#EDE9FE', paddingHorizontal: 10,
-    paddingVertical: 4, borderRadius: 12,
+    marginLeft: 'auto',
+    backgroundColor: THEME.colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
-  whoSharedPillText: { fontSize: 12, color: PURPLE, fontWeight: '700' },
+  whoSharedPillText: {
+    fontSize: 12,
+    color: THEME.colors.primaryDark,
+    fontWeight: '800',
+  },
 
   // Comments
-  commentsSection: {
-    borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 14, paddingVertical: 12,
-    backgroundColor: '#FAFAFD',
+  commentsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#F8ECE5',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFDFB',
   },
   noCommentsText: {
-    fontSize: 13, color: '#9CA3AF', fontStyle: 'italic', marginVertical: 6, textAlign: 'center',
+    fontSize: 13,
+    color: THEME.colors.textLight,
+    fontStyle: 'italic',
+    marginVertical: 8,
+    textAlign: 'center',
   },
-  commentItem: {
-    marginBottom: 12,
-  },
-  commentMainRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-  },
+  commentItem: { marginBottom: 12 },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start' },
   commentAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 8, marginTop: 2 },
   commentAvatarPlaceholder: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 8, marginTop: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    marginTop: 2,
   },
-  commentAvatarText: { fontSize: 14, fontWeight: '700', color: PURPLE },
+  commentAvatarInitial: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
+  },
   commentBubble: {
-    flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 14, borderWidth: 1, borderColor: '#F0EFFB',
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
   },
   commentHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
   },
-  commentUser: { fontWeight: '700', color: '#1a1a2e', fontSize: 13 },
-  commentTime: { fontSize: 11, color: '#9CA3AF' },
-  commentBody: { fontSize: 13, color: '#374151', lineHeight: 18 },
+  commentUsername: { fontWeight: '800', color: THEME.colors.text, fontSize: 13 },
+  commentTime: { fontSize: 11, color: THEME.colors.textLight },
+  commentBodyText: { fontSize: 13, color: THEME.colors.textSecondary, lineHeight: 18 },
   replyButton: { marginTop: 4, alignSelf: 'flex-start' },
-  replyButtonText: { fontSize: 12, fontWeight: '700', color: PURPLE },
+  replyButtonText: { fontSize: 12, fontWeight: '700', color: THEME.colors.primary },
 
-  // Nested Replies
+  // Threaded replies
   repliesList: {
-    marginLeft: 24, marginTop: 6, borderLeftWidth: 2, borderLeftColor: '#DDD6FE', paddingLeft: 10,
+    marginLeft: 26,
+    marginTop: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: '#FEE8DC',
+    paddingLeft: 10,
   },
-  replyMainRow: {
-    flexDirection: 'row', alignItems: 'flex-start', marginTop: 6,
-  },
+  replyRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 6 },
   replyAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 6, marginTop: 2 },
   replyAvatarPlaceholder: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 6, marginTop: 2,
-  },
-  replyAvatarText: { fontSize: 11, fontWeight: '700', color: PURPLE },
-  replyBubble: {
-    flex: 1, backgroundColor: '#F5F3FF', paddingHorizontal: 10, paddingVertical: 6,
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+    marginTop: 2,
   },
-  replyUser: { fontWeight: '700', color: '#1a1a2e', fontSize: 12 },
-  replyBody: { fontSize: 12, color: '#374151', lineHeight: 16 },
-
-  // Reply Banner
-  replyBanner: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#EDE9FE', paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 10, marginBottom: 8,
+  replyAvatarInitial: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
   },
-  replyBannerText: { fontSize: 12, color: '#5B21B6' },
-  replyBannerUser: { fontWeight: '700', color: PURPLE },
-  replyCancelBtn: { padding: 4 },
-  replyCancelText: { fontSize: 12, fontWeight: '700', color: '#6B7280' },
+  replyBubble: {
+    flex: 1,
+    backgroundColor: '#FFF8F4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  replyUsername: { fontWeight: '800', color: THEME.colors.text, fontSize: 12 },
+  replyBodyText: { fontSize: 12, color: THEME.colors.textSecondary, lineHeight: 16 },
 
-  // Input
+  activeReplyBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF0E8',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  activeReplyText: { fontSize: 12, color: THEME.colors.textSecondary },
+  activeReplyUsername: { fontWeight: '800', color: THEME.colors.primaryDark },
+  cancelReplyBtn: { padding: 4 },
+  cancelReplyText: { fontSize: 12, fontWeight: '800', color: THEME.colors.textLight },
+
+  // Comment input
   commentInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
-  commentInput: {
-    flex: 1, backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 14,
-    paddingVertical: 8, fontSize: 13, color: '#1a1a2e', borderWidth: 1, borderColor: '#E5E7EB',
+  commentTextInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: THEME.colors.text,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
   },
   commentSendBtn: {
-    backgroundColor: PURPLE, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
   },
-  commentSendBtnDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  commentSendText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  commentSendBtnDisabled: { backgroundColor: '#E2D9D2' },
+  commentSendText: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
-  // Modal Common
+  // Modal common
   modalOverlay: {
-    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)',
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(30,30,30,0.45)',
   },
   modalCard: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     maxHeight: '90%',
   },
   modalHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8ECE5',
   },
-  modalCancel: { fontSize: 16, color: '#6B7280', fontWeight: '600' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a2e' },
-  modalPost: { fontSize: 16, color: PURPLE, fontWeight: '700' },
+  modalCancelText: { fontSize: 15, color: THEME.colors.textSecondary, fontWeight: '600' },
+  modalTitleText: { fontSize: 17, fontWeight: '800', color: THEME.colors.text },
+  modalPostActionText: { fontSize: 15, color: THEME.colors.primary, fontWeight: '800' },
 
-  previewImage: {
-    width: '100%', height: 280, backgroundColor: '#F3F4F6',
-  },
-  captionInput: {
-    paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#1a1a2e',
-    minHeight: 60, borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  previewImage: { width: '100%', height: 260, backgroundColor: '#F8ECE5' },
+  captionTextInput: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 15,
+    color: THEME.colors.text,
+    minHeight: 60,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8ECE5',
   },
   changeImageBtn: { paddingHorizontal: 20, paddingVertical: 14 },
-  changeImageText: { color: PURPLE, fontWeight: '600', fontSize: 15 },
+  changeImageBtnText: { color: THEME.colors.primary, fontWeight: '700', fontSize: 14 },
 
-  // Share Modal Styles
-  shareCaptionInput: {
-    paddingHorizontal: 20, paddingVertical: 14, fontSize: 15, color: '#1a1a2e',
-    minHeight: 50, borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  // Share Modal
+  shareCaptionTextInput: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: THEME.colors.text,
+    minHeight: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8ECE5',
   },
-  sharePreviewBox: {
-    margin: 16, borderRadius: 14, borderWidth: 1, borderColor: '#EDE9FE',
-    backgroundColor: '#FAF5FF', overflow: 'hidden', padding: 12,
+  sharePreviewCard: {
+    margin: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F2E6DF',
+    backgroundColor: '#FFFDFB',
+    padding: 12,
   },
-  sharePreviewHeader: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 8,
-  },
+  sharePreviewAuthor: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   sharePreviewAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 8 },
   sharePreviewAvatarPlaceholder: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
-  sharePreviewAvatarText: { fontSize: 11, fontWeight: '700', color: PURPLE },
-  sharePreviewUsername: { fontSize: 13, fontWeight: '700', color: '#1a1a2e' },
-  sharePreviewImage: { width: '100%', height: 160, borderRadius: 10, marginBottom: 8, backgroundColor: '#E5E7EB' },
-  sharePreviewCaption: { fontSize: 12, color: '#4B5563', lineHeight: 16 },
+  sharePreviewInitial: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
+  },
+  sharePreviewUsername: { fontSize: 13, fontWeight: '800', color: THEME.colors.text },
+  sharePreviewImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F8ECE5',
+  },
+  sharePreviewCaptionText: { fontSize: 12, color: THEME.colors.textSecondary, lineHeight: 16 },
 
-  // Who Shared Modal Styles
-  modalLoading: { padding: 40, alignItems: 'center', gap: 10 },
-  modalLoadingText: { fontSize: 14, color: '#6B7280' },
-  modalEmpty: { padding: 40, alignItems: 'center' },
-  modalEmptyEmoji: { fontSize: 36, marginBottom: 8 },
-  modalEmptyText: { fontSize: 15, color: '#9CA3AF', fontWeight: '500' },
+  // Who Shared Modal
+  modalLoadingBox: { padding: 40, alignItems: 'center', gap: 10 },
+  modalLoadingText: { fontSize: 14, color: THEME.colors.textSecondary },
+  modalEmptyBox: { padding: 40, alignItems: 'center' },
+  modalEmptyText: {
+    fontSize: 15,
+    color: THEME.colors.textLight,
+    fontWeight: '600',
+    marginTop: 10,
+  },
   sharesListScroll: { paddingHorizontal: 20, paddingVertical: 10 },
-  sharerItem: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  sharerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8ECE5',
   },
-  sharerAvatar: { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
+  sharerAvatarImage: { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
   sharerAvatarPlaceholder: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: THEME.colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  sharerAvatarText: { fontSize: 18, fontWeight: '700', color: PURPLE },
-  sharerInfo: { flex: 1 },
-  sharerUsername: { fontSize: 15, fontWeight: '700', color: '#1a1a2e' },
-  sharerBio: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  sharerSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  sharerBadge: {
-    backgroundColor: '#F5F3FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+  sharerAvatarInitial: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
   },
-  sharerBadgeText: { fontSize: 12, fontWeight: '600', color: PURPLE },
+  sharerDetails: { flex: 1 },
+  sharerUsernameText: { fontSize: 15, fontWeight: '800', color: THEME.colors.text },
+  sharerBioText: { fontSize: 12, color: THEME.colors.textSecondary, marginTop: 2 },
+  sharerBadgePill: {
+    backgroundColor: THEME.colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sharerBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryDark,
+  },
 });

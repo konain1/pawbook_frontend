@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, ScrollView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { updateAvatar } from '../services/api';
-import { API_URL } from '../services/api';
-
-const PURPLE = '#7C3AED';
-const PURPLE_DARK = '#5B21B6';
+import { updateAvatar, API_URL } from '../services/api';
+import { THEME } from '../constants/theme';
 
 export default function EditProfileScreen({ token, user, navigation, onProfileUpdate }) {
   const [username, setUsername] = useState(user?.username || '');
@@ -47,7 +50,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Update failed');
 
-      Alert.alert('✅ Saved', 'Profile updated successfully!');
+      Alert.alert('Saved 🎉', 'Profile updated successfully!');
       if (onProfileUpdate) onProfileUpdate(data.user);
     } catch (err) {
       Alert.alert('Error', err.message || 'Something went wrong');
@@ -78,7 +81,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
     setUploadingAvatar(true);
     try {
       const res = await updateAvatar(token, { uri: asset.uri, name: filename, type });
-      Alert.alert('✅ Done', 'Profile picture updated!');
+      Alert.alert('Done 📸', 'Profile picture updated!');
       if (onProfileUpdate) onProfileUpdate(res.user);
     } catch (err) {
       Alert.alert('Upload Failed', err.message || 'Could not upload image');
@@ -88,25 +91,36 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.navigate('Profile')}>
           <Text style={styles.backBtnText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <View style={{ width: 60 }} />
+        <Text style={styles.headerTitle}>Edit Profile 🐾</Text>
+        <View style={{ width: 50 }} />
       </View>
 
-      {/* Change Photo */}
-      <TouchableOpacity style={styles.changePhotoBtn} onPress={handleChangePhoto} disabled={uploadingAvatar}>
-        {uploadingAvatar
-          ? <ActivityIndicator color={PURPLE} />
-          : <Text style={styles.changePhotoText}>📸  Change Profile Picture</Text>
-        }
+      {/* Change Photo Button */}
+      <TouchableOpacity
+        style={styles.changePhotoBtn}
+        onPress={handleChangePhoto}
+        disabled={uploadingAvatar}
+        activeOpacity={0.85}
+      >
+        {uploadingAvatar ? (
+          <ActivityIndicator color={THEME.colors.primary} />
+        ) : (
+          <Text style={styles.changePhotoText}>📸 Change Profile Photo</Text>
+        )}
       </TouchableOpacity>
 
-      <View style={styles.section}>
+      {/* Account Info Section */}
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Account Info</Text>
 
         <Text style={styles.label}>Username</Text>
@@ -115,25 +129,26 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
           value={username}
           onChangeText={setUsername}
           placeholder="Your username"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={THEME.colors.textLight}
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Bio</Text>
+        <Text style={styles.label}>Cute Bio</Text>
         <TextInput
           style={[styles.input, styles.bioInput]}
           value={bio}
           onChangeText={setBio}
-          placeholder="Tell us about yourself…"
-          placeholderTextColor="#9CA3AF"
+          placeholder="Tell other pet lovers about yourself & pets…"
+          placeholderTextColor={THEME.colors.textLight}
           multiline
           numberOfLines={3}
         />
       </View>
 
-      <View style={styles.section}>
+      {/* Change Password Section */}
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Change Password</Text>
-        <Text style={styles.sectionHint}>Leave blank to keep current password</Text>
+        <Text style={styles.sectionHint}>Leave blank to keep your current password</Text>
 
         <Text style={styles.label}>New Password</Text>
         <TextInput
@@ -141,7 +156,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
           value={password}
           onChangeText={setPassword}
           placeholder="Min. 6 characters"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={THEME.colors.textLight}
           secureTextEntry
         />
 
@@ -151,91 +166,120 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           placeholder="Repeat new password"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={THEME.colors.textLight}
           secureTextEntry
         />
       </View>
 
-      <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-        {saving
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.saveBtnText}>Save Changes</Text>
-        }
+      {/* Save Button */}
+      <TouchableOpacity
+        style={styles.saveBtn}
+        onPress={handleSave}
+        disabled={saving}
+        activeOpacity={0.88}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveBtnText}>Save Changes</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F3FF' },
-  content: { paddingBottom: 50 },
+  container: { flex: 1, backgroundColor: THEME.colors.background },
+  content: { paddingBottom: 60 },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: PURPLE,
-    paddingTop: 56,
-    paddingBottom: 20,
+    backgroundColor: '#FFEFEA',
+    paddingTop: 52,
+    paddingBottom: 18,
     paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8E0D5',
   },
-  backBtn: {},
-  backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F2DCD3',
+  },
+  backBtnText: { color: THEME.colors.text, fontSize: 14, fontWeight: '700' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: THEME.colors.text },
 
   changePhotoBtn: {
-    margin: 20,
-    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 18,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: PURPLE,
-    borderRadius: 14,
+    borderColor: THEME.colors.primary,
+    borderRadius: 20,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: PURPLE,
+    shadowColor: THEME.colors.primary,
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
-  changePhotoText: { color: PURPLE, fontSize: 15, fontWeight: '700' },
+  changePhotoText: { color: THEME.colors.primaryDark, fontSize: 15, fontWeight: '800' },
 
-  section: {
-    backgroundColor: '#fff',
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
+    marginTop: 14,
+    borderRadius: 24,
     padding: 20,
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a2e', marginBottom: 4 },
-  sectionHint: { fontSize: 12, color: '#9CA3AF', marginBottom: 16 },
-
-  label: { fontSize: 12, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6, marginTop: 14 },
-  input: {
-    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: THEME.colors.text, marginBottom: 2 },
+  sectionHint: { fontSize: 12, color: THEME.colors.textLight, marginBottom: 12 },
+
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  input: {
+    backgroundColor: '#FFFDFB',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1a1a2e',
+    color: THEME.colors.text,
   },
-  bioInput: { height: 90, textAlignVertical: 'top' },
+  bioInput: { height: 86, textAlignVertical: 'top' },
 
   saveBtn: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     marginHorizontal: 20,
+    marginTop: 22,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 24,
     alignItems: 'center',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.35,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 4,
   },
-  saveBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });

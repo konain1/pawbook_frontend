@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getProfile, updateAvatar } from '../services/api';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
 const { width } = Dimensions.get('window');
 
@@ -34,9 +36,14 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
     }
   }, [token]);
 
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
-  const onRefresh = () => { setRefreshing(true); fetchProfile(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchProfile();
+  };
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -61,7 +68,7 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
     try {
       const res = await updateAvatar(token, { uri: asset.uri, name: filename, type });
       setProfile(res.user);
-      Alert.alert('✅ Success', 'Profile picture updated!');
+      Alert.alert('Success 🎉', 'Profile picture updated!');
     } catch (err) {
       Alert.alert('Upload Failed', err.message || 'Could not upload image');
     } finally {
@@ -70,16 +77,22 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
   };
 
   const getInitials = (name = '') =>
-    name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+    name
+      .split(' ')
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
 
   const memberSince = profile?.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
     : null;
 
   if (loading) {
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color="#fff" />
+        <CatMascot size={70} />
+        <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 14 }} />
         <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
@@ -88,25 +101,36 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={THEME.colors.primary}
+        />
+      }
     >
-      {/* ── Purple Hero Section ── */}
+      {/* ── Warm Peach Hero Section ── */}
       <View style={styles.hero}>
-        {/* Top bar */}
+        {/* Top Header Row */}
         <View style={styles.topBar}>
-          <Text style={styles.topBarTitle}>My Profile</Text>
+          <Text style={styles.topBarTitle}>My Profile 🐾</Text>
           <View style={styles.topBarActions}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.navigate('EditProfile')}>
-              <Text style={styles.iconBtnText}>⚙️</Text>
+            <TouchableOpacity
+              style={styles.gearIconBtn}
+              onPress={() => navigation?.navigate('EditProfile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.gearIconText}>⚙️</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutPill} onPress={onLogout}>
-              <Text style={styles.logoutPillText}>Log out</Text>
+            <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8}>
+              <Text style={styles.logoutBtnText}>Log out</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Avatar */}
+        {/* Avatar with Camera Badge */}
         <TouchableOpacity
           style={styles.avatarWrapper}
           onPress={handlePickImage}
@@ -120,63 +144,73 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
               <Text style={styles.avatarInitials}>{getInitials(profile?.username || 'U')}</Text>
             </View>
           )}
-          {/* Camera badge */}
+
           <View style={styles.cameraBadge}>
-            {uploading
-              ? <ActivityIndicator size="small" color="#7C3AED" />
-              : <Text style={styles.cameraEmoji}>📷</Text>
-            }
+            {uploading ? (
+              <ActivityIndicator size="small" color={THEME.colors.primary} />
+            ) : (
+              <Text style={styles.cameraEmoji}>📸</Text>
+            )}
           </View>
         </TouchableOpacity>
 
-        {/* Name & tag */}
-        <Text style={styles.heroName}>{profile?.username || 'Pawbook User'}</Text>
+        {/* Name & Tag */}
+        <Text style={styles.heroName}>{profile?.username || 'Pawbook Member'}</Text>
         <Text style={styles.heroEmail}>{profile?.email || ''}</Text>
 
-        {/* Set photo CTA — only when no avatar */}
-        {!profile?.avatar && (
+        {/* Bio Badge */}
+        {profile?.bio ? (
+          <View style={styles.bioBadge}>
+            <Text style={styles.bioText}>“{profile.bio}”</Text>
+          </View>
+        ) : (
           <TouchableOpacity
-            style={styles.setPhotoCta}
-            onPress={handlePickImage}
-            disabled={uploading}
+            style={styles.addBioBtn}
+            onPress={() => navigation?.navigate('EditProfile')}
           >
-            {uploading
-              ? <ActivityIndicator color="#7C3AED" />
-              : <Text style={styles.setPhotoCtaText}>📸  Set Profile Picture</Text>
-            }
+            <Text style={styles.addBioText}>+ Add a cute bio</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* ── White Card Section ── */}
-      <View style={styles.card}>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>🐾</Text>
-            <Text style={styles.statLabel}>Pawbook</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{memberSince?.split(' ')[0] || '—'}</Text>
-            <Text style={styles.statLabel}>Joined</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>Active</Text>
-            <Text style={styles.statLabel}>Status</Text>
-          </View>
+      {/* ── Attributes / Stats Chips (Reference Image Style) ── */}
+      <View style={styles.attributeGrid}>
+        <View style={styles.attributeCard}>
+          <Text style={styles.attributeIcon}>🐾</Text>
+          <Text style={styles.attributeLabel}>Community</Text>
+          <Text style={styles.attributeValue}>Pawbook</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={styles.attributeCard}>
+          <Text style={styles.attributeIcon}>📅</Text>
+          <Text style={styles.attributeLabel}>Joined</Text>
+          <Text style={styles.attributeValue}>{memberSince || 'Recent'}</Text>
+        </View>
 
-        {/* Info rows */}
+        <View style={styles.attributeCard}>
+          <Text style={styles.attributeIcon}>✨</Text>
+          <Text style={styles.attributeLabel}>Status</Text>
+          <Text style={styles.attributeValue}>Active Pet Lover</Text>
+        </View>
+      </View>
+
+      {/* ── Main Details Card ── */}
+      <View style={styles.card}>
+        <Text style={styles.cardSectionTitle}>Account Details</Text>
+
         <InfoRow icon="👤" label="Username" value={profile?.username} />
         <InfoRow icon="📧" label="Email" value={profile?.email} />
-        {profile?.bio && <InfoRow icon="✏️" label="Bio" value={profile.bio} />}
-        {memberSince && <InfoRow icon="📅" label="Member since" value={memberSince} />}
+        <InfoRow icon="🐾" label="Role" value="Pet Parent & Enthusiast" />
+        {memberSince && <InfoRow icon="🗓️" label="Member Since" value={memberSince} />}
 
+        {/* Action Button */}
+        <TouchableOpacity
+          style={styles.editProfileBtn}
+          onPress={() => navigation?.navigate('EditProfile')}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.editProfileBtnText}>✏️ Edit Profile Info</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -185,7 +219,9 @@ export default function ProfileScreen({ token, user: initialUser, onLogout, navi
 function InfoRow({ icon, label, value }) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoIcon}>{icon}</Text>
+      <View style={styles.infoIconBox}>
+        <Text style={styles.infoIcon}>{icon}</Text>
+      </View>
       <View style={styles.infoText}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value || '—'}</Text>
@@ -194,161 +230,276 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-const PURPLE = '#7C3AED';
-const PURPLE_DARK = '#5B21B6';
-const PURPLE_LIGHT = '#EDE9FE';
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F3FF' },
-
-  loadingScreen: { flex: 1, backgroundColor: PURPLE, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: '#fff', marginTop: 12, fontSize: 15, opacity: 0.8 },
+  container: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+  },
+  contentContainer: {
+    paddingBottom: 110,
+  },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: THEME.colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: THEME.colors.textSecondary,
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 
   // ── Hero ──
   hero: {
-    backgroundColor: PURPLE,
-    paddingBottom: 60,
-    paddingHorizontal: 24,
+    backgroundColor: '#FFEFEA',
+    paddingBottom: 28,
+    paddingHorizontal: 22,
     alignItems: 'center',
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: '#F8E0D5',
   },
-
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: 56,
-    marginBottom: 28,
+    marginTop: 48,
+    marginBottom: 20,
   },
-  topBarTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-  logoutPill: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+  topBarTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    letterSpacing: -0.3,
   },
-  logoutPillText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  topBarActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  gearIconBtn: {
+    backgroundColor: '#FFFFFF',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#F2DCD3',
   },
-  iconBtnText: { fontSize: 18 },
+  gearIconText: { fontSize: 17 },
+  logoutBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F2DCD3',
+  },
+  logoutBtnText: {
+    color: THEME.colors.primaryDark,
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
-  avatarWrapper: { position: 'relative', marginBottom: 16 },
+  // Avatar
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 106,
+    height: 106,
+    borderRadius: 53,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: '#FFFFFF',
   },
   avatarPlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: PURPLE_DARK,
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    backgroundColor: THEME.colors.accent,
     borderWidth: 4,
-    borderColor: '#fff',
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarInitials: { fontSize: 38, fontWeight: '800', color: '#fff' },
+  avatarInitials: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: THEME.colors.primaryDark,
+  },
   cameraBadge: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F8E0D5',
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
   },
   cameraEmoji: { fontSize: 15 },
 
-  heroName: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  heroEmail: { fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 16 },
-
-  setPhotoCta: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 22,
-    paddingVertical: 11,
-    borderRadius: 24,
-    marginTop: 4,
+  heroName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 2,
   },
-  setPhotoCtaText: { color: PURPLE, fontSize: 14, fontWeight: '700' },
-
-  // ── White Card ──
-  card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: -32,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-    marginBottom: 32,
+  heroEmail: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    marginBottom: 10,
+  },
+  bioBadge: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F2DCD3',
+    maxWidth: '85%',
+  },
+  bioText: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  addBioBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F2DCD3',
+  },
+  addBioText: {
+    color: THEME.colors.primaryDark,
+    fontSize: 12,
+    fontWeight: '700',
   },
 
-  statsRow: {
+  // Attribute Grid (Reference Style)
+  attributeGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    marginTop: 18,
+    gap: 10,
   },
-  statItem: { alignItems: 'center', flex: 1 },
-  statValue: { fontSize: 18, fontWeight: '700', color: '#1a1a2e', marginBottom: 2 },
-  statLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 36, backgroundColor: '#E5E7EB' },
-
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 20 },
-
-  // Info rows
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
-  infoIcon: { fontSize: 20, marginRight: 14, width: 28, textAlign: 'center' },
-  infoText: { flex: 1 },
-  infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
-  infoValue: { fontSize: 15, color: '#1a1a2e', fontWeight: '600' },
-
-  // Buttons
-  primaryBtn: {
-    backgroundColor: PURPLE,
-    paddingVertical: 15,
-    borderRadius: 16,
+  attributeCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 20,
     alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: PURPLE,
-    shadowOpacity: 0.35,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  attributeIcon: { fontSize: 20, marginBottom: 4 },
+  attributeLabel: {
+    fontSize: 11,
+    color: THEME.colors.textLight,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  attributeValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    textAlign: 'center',
+  },
+
+  // Main Card
+  card: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 18,
+    marginTop: 18,
+    borderRadius: 26,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.05,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    elevation: 2,
   },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cardSectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 16,
+    letterSpacing: -0.2,
+  },
 
-  outlineBtn: {
-    paddingVertical: 15,
-    borderRadius: 16,
+  infoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    marginBottom: 16,
   },
-  outlineBtnText: { color: '#6B7280', fontSize: 15, fontWeight: '600' },
+  infoIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFF5F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#FFE2DA',
+  },
+  infoIcon: { fontSize: 17 },
+  infoText: { flex: 1 },
+  infoLabel: {
+    fontSize: 11,
+    color: THEME.colors.textLight,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: THEME.colors.text,
+    fontWeight: '700',
+  },
+
+  editProfileBtn: {
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 14,
+    borderRadius: 22,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  editProfileBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
 });
