@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { loginUser } from '../services/api';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -8,104 +21,249 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!email.trim() || !password) {
+      Alert.alert('Missing Fields', 'Please enter your email and password.');
       return;
     }
     setLoading(true);
     try {
-      const res = await loginUser(email, password);
-      Alert.alert('Success', `Welcome back, ${res.user.username}! 🐾`);
+      const res = await loginUser(email.trim(), password);
+      Alert.alert('Welcome Back 🎉', `Good to see you again, ${res.user.username}! 🐾`);
       if (onLoginSuccess) {
         onLoginSuccess(res.user, res.token);
       } else {
         navigation?.navigate('Home');
       }
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Something went wrong');
+      Alert.alert('Login Failed', error.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation?.navigate('Welcome')}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Top Back Navigation */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation?.navigate('Welcome')}
+        >
+          <Text style={styles.backButtonIcon}>←</Text>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.title}>Welcome Back 🐾</Text>
-      <Text style={styles.subtitle}>Login to your account</Text>
+        {/* Mascot Header */}
+        <View style={styles.mascotWrapper}>
+          <CatMascot size={92} />
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#666"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+        {/* Form Card */}
+        <View style={styles.card}>
+          <View style={styles.badgePill}>
+            <Text style={styles.badgePillText}>Welcome Back 🐾</Text>
+          </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#666"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+          <Text style={styles.title}>Log in</Text>
+          <Text style={styles.subtitle}>
+            Enter your details to access your Pawbook feed & friends
+          </Text>
 
-      <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Login</Text>}
-      </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="your.email@example.com"
+              placeholderTextColor={THEME.colors.textLight}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
 
-      <TouchableOpacity onPress={() => navigation?.navigate('Register')}>
-        <Text style={styles.link}>Don't have an account? <Text style={styles.linkBold}>Sign Up</Text></Text>
-      </TouchableOpacity>
-    </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor={THEME.colors.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.88}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryBtnText}>Log In →</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.signupFooterRow}
+            onPress={() => navigation?.navigate('Register')}
+          >
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={styles.footerLink}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: THEME.colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 54,
+    paddingBottom: 40,
     justifyContent: 'center',
-    paddingHorizontal: 30,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     position: 'absolute',
     top: 50,
-    left: 25,
+    left: 22,
     zIndex: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  backButtonIcon: {
+    fontSize: 16,
+    color: THEME.colors.primary,
+    marginRight: 4,
+    fontWeight: '700',
   },
   backButtonText: {
-    color: '#e94560',
-    fontSize: 16,
+    color: THEME.colors.text,
+    fontSize: 14,
     fontWeight: '600',
   },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#a0a0b0', marginBottom: 40 },
-  input: {
-    backgroundColor: '#16213e',
-    color: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#2a2a4a',
-  },
-  btn: {
-    backgroundColor: '#e94560',
-    paddingVertical: 15,
-    borderRadius: 12,
+  mascotWrapper: {
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+    marginBottom: 16,
+    marginTop: 20,
   },
-  btnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  link: { color: '#a0a0b0', textAlign: 'center', fontSize: 15 },
-  linkBold: { color: '#e94560', fontWeight: '600' },
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  badgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: THEME.colors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  badgePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryDark,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: '#FFFDFB',
+    color: THEME.colors.text,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    fontSize: 15,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+  },
+  primaryBtn: {
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 16,
+    borderRadius: 24,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  signupFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  footerText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 14,
+  },
+  footerLink: {
+    color: THEME.colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });

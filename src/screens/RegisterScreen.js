@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { registerUser, sendOtp } from '../services/api';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
 export default function RegisterScreen({ navigation, onRegisterSuccess }) {
   const [step, setStep] = useState(1); // 1: Enter details, 2: Enter OTP
@@ -16,7 +29,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
     let interval = null;
     if (resendTimer > 0) {
       interval = setInterval(() => {
-        setResendTimer(prev => prev - 1);
+        setResendTimer((prev) => prev - 1);
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -108,127 +121,177 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => {
-          if (step === 2) {
-            setStep(1);
-          } else {
-            navigation?.navigate('Welcome');
-          }
-        }}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
+        {/* Top Back Navigation */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            if (step === 2) {
+              setStep(1);
+            } else {
+              navigation?.navigate('Welcome');
+            }
+          }}
+        >
+          <Text style={styles.backButtonIcon}>←</Text>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
 
-      {step === 1 ? (
-        /* ── STEP 1: Details ── */
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Join Pawbook 🐾</Text>
-          <Text style={styles.subtitle}>Create your account & connect with pet lovers</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Username"
-            placeholderTextColor="#666"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email Address"
-            placeholderTextColor="#666"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min. 6 characters)"
-            placeholderTextColor="#666"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity style={styles.btn} onPress={handleSendOtp} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>Continue & Verify Email →</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => navigation?.navigate('Login')}>
-            <Text style={styles.link}>
-              Already have an account? <Text style={styles.linkBold}>Login</Text>
-            </Text>
-          </TouchableOpacity>
+        {/* Mascot Header */}
+        <View style={styles.mascotWrapper}>
+          <CatMascot size={92} />
         </View>
-      ) : (
-        /* ── STEP 2: Email Verification OTP ── */
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Verify Email 📧</Text>
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to{'\n'}
-            <Text style={styles.highlightEmail}>{email}</Text>
-          </Text>
 
-          <TextInput
-            style={[styles.input, styles.otpInput]}
-            placeholder="• • • • • •"
-            placeholderTextColor="#666"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            maxLength={6}
-            autoFocus
-          />
+        {step === 1 ? (
+          /* ── STEP 1: Details ── */
+          <View style={styles.card}>
+            <View style={styles.badgePill}>
+              <Text style={styles.badgePillText}>Join Pawbook 🐾</Text>
+            </View>
 
-          {/* ── Spam Folder Reminder Hint ── */}
-          <View style={styles.spamHintBox}>
-            <Text style={styles.spamHintEmoji}>💡</Text>
-            <Text style={styles.spamHintText}>
-              Can't find the email? Please check your{' '}
-              <Text style={styles.spamHintBold}>Spam</Text>,{' '}
-              <Text style={styles.spamHintBold}>Junk</Text>, or{' '}
-              <Text style={styles.spamHintBold}>Promotions</Text> folder.
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>
+              Connect with fellow pet lovers in a calming, friendly space
             </Text>
-          </View>
 
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={handleCompleteRegistration}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.btnText}>Verify & Create Account 🐾</Text>
-            )}
-          </TouchableOpacity>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Username</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Luna_the_cat"
+                placeholderTextColor={THEME.colors.textLight}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+              />
+            </View>
 
-          {/* Resend & Change Email Actions */}
-          <View style={styles.otpActions}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="your.email@example.com"
+                placeholderTextColor={THEME.colors.textLight}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="At least 6 characters"
+                placeholderTextColor={THEME.colors.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
             <TouchableOpacity
-              onPress={handleResendOtp}
-              disabled={resendTimer > 0 || loading}
+              style={styles.primaryBtn}
+              onPress={handleSendOtp}
+              disabled={loading}
+              activeOpacity={0.88}
             >
-              <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
-                {resendTimer > 0 ? `Resend code in ${resendTimer}s` : 'Resend Code'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Continue & Verify Email →</Text>
+              )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setStep(1)}>
-              <Text style={styles.changeEmailText}>Edit details / Change email</Text>
+            <TouchableOpacity
+              style={styles.loginFooterRow}
+              onPress={() => navigation?.navigate('Login')}
+            >
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerLink}>Login</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      )}
+        ) : (
+          /* ── STEP 2: Email Verification OTP ── */
+          <View style={styles.card}>
+            <View style={styles.badgePill}>
+              <Text style={styles.badgePillText}>Email Verification 📧</Text>
+            </View>
+
+            <Text style={styles.title}>Verify Code</Text>
+            <Text style={styles.subtitle}>
+              Enter the 6-digit code sent to{'\n'}
+              <Text style={styles.highlightEmail}>{email}</Text>
+            </Text>
+
+            <View style={styles.otpInputContainer}>
+              <TextInput
+                style={styles.otpInput}
+                placeholder="• • • • • •"
+                placeholderTextColor={THEME.colors.textLight}
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                maxLength={6}
+                autoFocus
+              />
+            </View>
+
+            {/* Spam Folder Reminder Box */}
+            <View style={styles.spamHintBox}>
+              <Text style={styles.spamHintEmoji}>💡</Text>
+              <Text style={styles.spamHintText}>
+                Can't find the email? Please check your{' '}
+                <Text style={styles.spamHintBold}>Spam</Text>,{' '}
+                <Text style={styles.spamHintBold}>Junk</Text>, or{' '}
+                <Text style={styles.spamHintBold}>Promotions</Text> folder.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleCompleteRegistration}
+              disabled={loading}
+              activeOpacity={0.88}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Verify & Create Account 🐾</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Resend & Edit Actions */}
+            <View style={styles.otpActions}>
+              <TouchableOpacity
+                onPress={handleResendOtp}
+                disabled={resendTimer > 0 || loading}
+                style={styles.resendBtn}
+              >
+                <Text
+                  style={[
+                    styles.resendText,
+                    resendTimer > 0 && styles.resendDisabled,
+                  ]}
+                >
+                  {resendTimer > 0
+                    ? `Resend code in ${resendTimer}s`
+                    : '🔁 Resend Code'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setStep(1)} style={styles.changeEmailBtn}>
+                <Text style={styles.changeEmailText}>✏️ Edit email / details</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -236,69 +299,139 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
+    backgroundColor: THEME.colors.background,
   },
-  formContainer: {
-    width: '100%',
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingTop: 54,
+    paddingBottom: 40,
+    justifyContent: 'center',
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     position: 'absolute',
     top: 50,
-    left: 25,
+    left: 22,
     zIndex: 10,
-    padding: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  backButtonIcon: {
+    fontSize: 16,
+    color: THEME.colors.primary,
+    marginRight: 4,
+    fontWeight: '700',
   },
   backButtonText: {
-    color: '#e94560',
-    fontSize: 16,
+    color: THEME.colors.text,
+    fontSize: 14,
     fontWeight: '600',
   },
+  mascotWrapper: {
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 20,
+  },
+  card: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 28,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  badgePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: THEME.colors.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  badgePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.primaryDark,
+  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
-    color: '#a0a0b0',
-    marginBottom: 32,
-    lineHeight: 22,
+    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    marginBottom: 22,
+    lineHeight: 20,
   },
   highlightEmail: {
-    color: '#fff',
+    color: THEME.colors.primaryDark,
     fontWeight: '700',
+  },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.text,
+    marginBottom: 6,
+    marginLeft: 4,
   },
   input: {
-    backgroundColor: '#16213e',
-    color: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#2a2a4a',
+    backgroundColor: '#FFFDFB',
+    color: THEME.colors.text,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 18,
+    fontSize: 15,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.border,
+  },
+  otpInputContainer: {
+    marginVertical: 8,
+    alignItems: 'center',
   },
   otpInput: {
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: 10,
+    width: '100%',
+    backgroundColor: '#FFFDFB',
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 12,
     textAlign: 'center',
-    paddingVertical: 18,
-    color: '#e94560',
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: THEME.colors.primary,
+    color: THEME.colors.primaryDark,
   },
   spamHintBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1f2942',
+    backgroundColor: '#FFF5F0',
     borderWidth: 1,
-    borderColor: '#3b4260',
-    borderRadius: 12,
+    borderColor: '#FFE2DA',
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
+    paddingVertical: 11,
+    marginVertical: 14,
     gap: 8,
   },
   spamHintEmoji: {
@@ -307,55 +440,69 @@ const styles = StyleSheet.create({
   spamHintText: {
     flex: 1,
     fontSize: 12,
-    color: '#cbd5e1',
+    color: THEME.colors.textSecondary,
     lineHeight: 17,
   },
   spamHintBold: {
     fontWeight: '700',
-    color: '#fbbf24',
+    color: THEME.colors.primaryDark,
   },
-  btn: {
-    backgroundColor: '#e94560',
+  primaryBtn: {
+    backgroundColor: THEME.colors.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 24,
     alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 20,
-    shadowColor: '#e94560',
+    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  btnText: {
-    color: '#fff',
-    fontSize: 17,
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  loginFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  footerText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 14,
+  },
+  footerLink: {
+    color: THEME.colors.primary,
     fontWeight: '700',
-  },
-  link: {
-    color: '#a0a0b0',
-    textAlign: 'center',
-    fontSize: 15,
-  },
-  linkBold: {
-    color: '#e94560',
-    fontWeight: '600',
+    fontSize: 14,
   },
   otpActions: {
     alignItems: 'center',
-    gap: 14,
-    marginTop: 8,
+    gap: 12,
+    marginTop: 4,
+  },
+  resendBtn: {
+    paddingVertical: 4,
   },
   resendText: {
-    color: '#e94560',
-    fontSize: 15,
-    fontWeight: '600',
+    color: THEME.colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   resendDisabled: {
-    color: '#666',
+    color: THEME.colors.textLight,
+  },
+  changeEmailBtn: {
+    paddingVertical: 4,
   },
   changeEmailText: {
-    color: '#a0a0b0',
-    fontSize: 14,
+    color: THEME.colors.textSecondary,
+    fontSize: 13,
     textDecorationLine: 'underline',
   },
 });

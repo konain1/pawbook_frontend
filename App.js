@@ -6,6 +6,8 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 
+import { THEME } from './src/constants/theme';
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Welcome');
   const [user, setUser] = useState(null);
@@ -62,10 +64,8 @@ export default function App() {
     }
   };
 
-  const bgColor = currentScreen === 'EditProfile' ? '#7C3AED' : '#1a1a2e';
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: THEME.colors.background }]}>
       {renderScreen()}
     </SafeAreaView>
   );
