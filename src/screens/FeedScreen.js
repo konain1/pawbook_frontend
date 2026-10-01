@@ -125,6 +125,14 @@ export default function FeedScreen({ user, token }) {
 
   // ── Share Post ──
   const handleOpenShareModal = (post) => {
+    const originalAuthorId = post.isShared && post.originalPost
+      ? (post.originalPost.user?._id || post.originalPost.user)
+      : null;
+    const isOwnPost = post.user?._id === user?._id || (originalAuthorId && originalAuthorId === user?._id);
+    if (isOwnPost) {
+      Alert.alert('Cannot Share', 'You cannot share your own post. Sharing is for friends and other users!');
+      return;
+    }
     const target = post.isShared && post.originalPost ? post.originalPost : post;
     setShareTargetPost(target);
     setShareCaption('');
@@ -331,6 +339,11 @@ export default function FeedScreen({ user, token }) {
           posts.map((post) => {
             const isLiked = post.likes?.includes(user?._id);
             const isOwner = post.user?._id === user?._id;
+            const originalAuthorId = post.isShared && post.originalPost
+              ? (post.originalPost.user?._id || post.originalPost.user)
+              : null;
+            const isOwnPost = isOwner || (originalAuthorId && originalAuthorId === user?._id);
+            const canShare = !isOwnPost;
             const showComments = expandedComments[post._id];
             const isReplyingThisPost = replyTarget && replyTarget.postId === post._id;
             const shareCount = getSharesCount(post);
@@ -488,15 +501,17 @@ export default function FeedScreen({ user, token }) {
                     <Text style={styles.actionCountText}>{getCommentsCount(post)}</Text>
                   </TouchableOpacity>
 
-                  {/* Share Button */}
-                  <TouchableOpacity
-                    style={styles.actionChip}
-                    onPress={() => handleOpenShareModal(post)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.actionIconText}>🔁</Text>
-                    <Text style={styles.actionCountText}>{shareCount}</Text>
-                  </TouchableOpacity>
+                  {/* Share Button — Only shown for friends and other users, not the author */}
+                  {canShare && (
+                    <TouchableOpacity
+                      style={styles.actionChip}
+                      onPress={() => handleOpenShareModal(post)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.actionIconText}>🔁</Text>
+                      <Text style={styles.actionCountText}>{shareCount}</Text>
+                    </TouchableOpacity>
+                  )}
 
                   {/* Who Shared Pill */}
                   {shareCount > 0 && (
