@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.colors.background },
   screen: { flex: 1 },
 
-  // Floating Tab Bar
+  // Floating Luxury Tab Bar
   tabBarContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 24 : 14,
@@ -95,16 +95,16 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 32,
     borderWidth: 1,
-    borderColor: '#F2E6DF',
+    borderColor: THEME.colors.borderCrimson,
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
     elevation: 8,
     width: '100%',
     justifyContent: 'space-around',
@@ -119,10 +119,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabItemActive: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.primary,
+    shadowColor: THEME.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabIcon: {
-    fontSize: 20,
+    fontSize: 19,
     opacity: 0.5,
   },
   tabIconActive: {
@@ -131,6 +136,7 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     fontSize: 13,
     fontWeight: '800',
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.offWhite,
+    letterSpacing: 0.3,
   },
 });

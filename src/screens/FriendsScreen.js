@@ -1,14 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Image, RefreshControl,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import {
-  searchUsers, sendFriendRequest, getPendingRequests,
-  getSentRequests, getFriends, acceptFriendRequest, rejectFriendRequest,
+  searchUsers,
+  sendFriendRequest,
+  getPendingRequests,
+  getSentRequests,
+  getFriends,
+  acceptFriendRequest,
+  rejectFriendRequest,
 } from '../services/api';
-
-const PURPLE = '#7C3AED';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
 export default function FriendsScreen({ user, token }) {
   const [activeSection, setActiveSection] = useState('search');
@@ -20,10 +33,9 @@ export default function FriendsScreen({ user, token }) {
   const [sentRequests, setSentRequests] = useState([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [sendingTo, setSendingTo] = useState(null); // userId currently sending request to
-  const [actioningReq, setActioningReq] = useState(null); // requestId being accepted/rejected
+  const [sendingTo, setSendingTo] = useState(null);
+  const [actioningReq, setActioningReq] = useState(null);
 
-  // Fetch friends + requests on mount
   const fetchAll = useCallback(async () => {
     if (!token) return;
     setLoadingFriends(true);
@@ -37,25 +49,29 @@ export default function FriendsScreen({ user, token }) {
       setPendingRequests(p);
       setSentRequests(s);
     } catch (err) {
-      // silent fail — will show empty states
+      // silent fail
     } finally {
       setLoadingFriends(false);
       setRefreshing(false);
     }
   }, [token]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  const onRefresh = () => { setRefreshing(true); fetchAll(); };
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAll();
+  };
 
-  // ─── Search ───
+  // ── Search ──
   const handleSearch = async () => {
     if (!query.trim()) return;
     setSearching(true);
     try {
       const results = await searchUsers(token, query.trim());
-      // Filter out self
-      setSearchResults(results.filter(u => u._id !== user?._id));
+      setSearchResults(results.filter((u) => u._id !== user?._id));
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
@@ -63,13 +79,12 @@ export default function FriendsScreen({ user, token }) {
     }
   };
 
-  // ─── Send Friend Request ───
+  // ── Send Friend Request ──
   const handleSendRequest = async (userId) => {
     setSendingTo(userId);
     try {
       await sendFriendRequest(token, userId);
       Alert.alert('✅ Sent!', 'Friend request sent successfully');
-      // Refresh sent requests
       const s = await getSentRequests(token);
       setSentRequests(s);
     } catch (err) {
@@ -79,7 +94,7 @@ export default function FriendsScreen({ user, token }) {
     }
   };
 
-  // ─── Accept / Reject ───
+  // ── Accept / Reject ──
   const handleAccept = async (requestId) => {
     setActioningReq(requestId);
     try {
@@ -105,10 +120,9 @@ export default function FriendsScreen({ user, token }) {
     }
   };
 
-  // Check if a user is already a friend, has a pending sent request, etc.
-  const friendIds = friends.map(f => f._id);
-  const sentIds = sentRequests.map(s => s.receiver?._id || s.receiver);
-  const pendingIds = pendingRequests.map(p => p.sender?._id || p.sender);
+  const friendIds = friends.map((f) => f._id);
+  const sentIds = sentRequests.map((s) => s.receiver?._id || s.receiver);
+  const pendingIds = pendingRequests.map((p) => p.sender?._id || p.sender);
 
   const getUserStatus = (userId) => {
     if (friendIds.includes(userId)) return 'friend';
@@ -119,15 +133,20 @@ export default function FriendsScreen({ user, token }) {
 
   const getInitial = (name) => (name ? name[0].toUpperCase() : '?');
 
-  // ─── Render ───
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={THEME.colors.primary}
+        />
+      }
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title}>🐾 Friends</Text>
+      <Text style={styles.title}>🐾 Friends & Network</Text>
 
       {/* Section tabs */}
       <View style={styles.tabRow}>
@@ -136,9 +155,14 @@ export default function FriendsScreen({ user, token }) {
             key={key}
             style={[styles.tab, activeSection === key && styles.tabActive]}
             onPress={() => setActiveSection(key)}
+            activeOpacity={0.8}
           >
             <Text style={[styles.tabText, activeSection === key && styles.tabTextActive]}>
-              {key === 'search' ? '🔍 Search' : key === 'requests' ? `📬 Requests${pendingRequests.length ? ` (${pendingRequests.length})` : ''}` : `👥 My Friends (${friends.length})`}
+              {key === 'search'
+                ? '🔍 Search'
+                : key === 'requests'
+                ? `📬 Requests${pendingRequests.length ? ` (${pendingRequests.length})` : ''}`
+                : `👥 Friends (${friends.length})`}
             </Text>
           </TouchableOpacity>
         ))}
@@ -150,19 +174,25 @@ export default function FriendsScreen({ user, token }) {
           <View style={styles.searchRow}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by username..."
-              placeholderTextColor="#9CA3AF"
+              placeholder="Search by pet lover's username..."
+              placeholderTextColor={THEME.colors.textLight}
               value={query}
               onChangeText={setQuery}
               onSubmitEditing={handleSearch}
               autoCapitalize="none"
               returnKeyType="search"
             />
-            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={searching}>
-              {searching
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.searchBtnText}>Search</Text>
-              }
+            <TouchableOpacity
+              style={styles.searchBtn}
+              onPress={handleSearch}
+              disabled={searching}
+              activeOpacity={0.85}
+            >
+              {searching ? (
+                <ActivityIndicator color={THEME.colors.offWhite} size="small" />
+              ) : (
+                <Text style={styles.searchBtnText}>Search</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -202,11 +232,13 @@ export default function FriendsScreen({ user, token }) {
                     style={styles.addBtn}
                     onPress={() => handleSendRequest(u._id)}
                     disabled={sendingTo === u._id}
+                    activeOpacity={0.85}
                   >
-                    {sendingTo === u._id
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.addBtnText}>+ Add</Text>
-                    }
+                    {sendingTo === u._id ? (
+                      <ActivityIndicator color={THEME.colors.offWhite} size="small" />
+                    ) : (
+                      <Text style={styles.addBtnText}>+ Add</Text>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
@@ -220,7 +252,7 @@ export default function FriendsScreen({ user, token }) {
         <View>
           {pendingRequests.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>📭</Text>
+              <CatMascot size={68} />
               <Text style={styles.emptyTitle}>No pending requests</Text>
               <Text style={styles.emptySubtext}>Search for friends to connect!</Text>
             </View>
@@ -245,16 +277,19 @@ export default function FriendsScreen({ user, token }) {
                       style={styles.acceptBtn}
                       onPress={() => handleAccept(req._id)}
                       disabled={actioningReq === req._id}
+                      activeOpacity={0.85}
                     >
-                      {actioningReq === req._id
-                        ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={styles.acceptBtnText}>✓</Text>
-                      }
+                      {actioningReq === req._id ? (
+                        <ActivityIndicator color={THEME.colors.offWhite} size="small" />
+                      ) : (
+                        <Text style={styles.acceptBtnText}>✓</Text>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.rejectBtn}
                       onPress={() => handleReject(req._id)}
                       disabled={actioningReq === req._id}
+                      activeOpacity={0.85}
                     >
                       <Text style={styles.rejectBtnText}>✕</Text>
                     </TouchableOpacity>
@@ -264,7 +299,7 @@ export default function FriendsScreen({ user, token }) {
             })
           )}
 
-          {/* Sent requests */}
+          {/* Sent Requests Sub-Section */}
           {sentRequests.length > 0 && (
             <View style={styles.sentSection}>
               <Text style={styles.sentTitle}>Sent Requests ({sentRequests.length})</Text>
@@ -273,10 +308,12 @@ export default function FriendsScreen({ user, token }) {
                 return (
                   <View key={req._id} style={styles.sentCard}>
                     <View style={styles.avatarSmall}>
-                      <Text style={styles.avatarSmallText}>{getInitial(receiver?.username)}</Text>
+                      <Text style={styles.avatarSmallText}>
+                        {getInitial(receiver?.username || '?')}
+                      </Text>
                     </View>
-                    <Text style={styles.sentName}>{receiver?.username || 'Unknown'}</Text>
-                    <Text style={styles.sentStatus}>Pending</Text>
+                    <Text style={styles.sentName}>{receiver?.username || 'User'}</Text>
+                    <Text style={styles.sentStatus}>Pending Response</Text>
                   </View>
                 );
               })}
@@ -289,12 +326,14 @@ export default function FriendsScreen({ user, token }) {
       {activeSection === 'friends' && (
         <View>
           {loadingFriends ? (
-            <ActivityIndicator size="large" color={PURPLE} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={THEME.colors.primary} style={{ marginTop: 30 }} />
           ) : friends.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>🐾</Text>
+              <CatMascot size={68} />
               <Text style={styles.emptyTitle}>No friends yet</Text>
-              <Text style={styles.emptySubtext}>Search and send friend requests to connect!</Text>
+              <Text style={styles.emptySubtext}>
+                Use the search tab to find and add fellow pet lovers!
+              </Text>
             </View>
           ) : (
             friends.map((f) => (
@@ -323,151 +362,209 @@ export default function FriendsScreen({ user, token }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F3FF' },
-  content: { padding: 20, paddingBottom: 100 },
-  title: { fontSize: 26, fontWeight: '800', color: '#1a1a2e', marginBottom: 16 },
+  container: { flex: 1, backgroundColor: THEME.colors.background },
+  content: { padding: 20, paddingBottom: 110, paddingTop: 52 },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
 
   // Tabs
   tabRow: { flexDirection: 'row', marginBottom: 20, gap: 8 },
   tab: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#fff',
+    borderRadius: 14,
+    backgroundColor: THEME.colors.surface,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: THEME.colors.border,
   },
-  tabActive: { backgroundColor: PURPLE, borderColor: PURPLE },
-  tabText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  tabTextActive: { color: '#fff' },
+  tabActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.borderCrimson,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  tabText: { fontSize: 12, fontWeight: '700', color: THEME.colors.textSecondary },
+  tabTextActive: { color: THEME.colors.offWhite },
 
   // Search
   searchRow: { flexDirection: 'row', marginBottom: 16, gap: 10 },
   searchInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: THEME.colors.surfaceWarm,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: '#1a1a2e',
+    paddingVertical: 12,
+    fontSize: 14,
+    color: THEME.colors.text,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: THEME.colors.border,
   },
   searchBtn: {
-    backgroundColor: PURPLE,
-    borderRadius: 14,
-    paddingHorizontal: 20,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 16,
+    paddingHorizontal: 18,
     justifyContent: 'center',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.3,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 4,
   },
-  searchBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  searchBtnText: { color: THEME.colors.offWhite, fontWeight: '800', fontSize: 14 },
 
-  emptyText: { color: '#9CA3AF', fontSize: 14, textAlign: 'center', marginTop: 20 },
+  emptyText: { color: THEME.colors.textLight, fontSize: 14, textAlign: 'center', marginTop: 20 },
 
   // Cards
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.08,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 3,
   },
   avatar: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.colors.surfaceWarm,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
   },
-  avatarImg: { width: 50, height: 50, borderRadius: 25, marginRight: 14 },
-  avatarText: { fontSize: 22, fontWeight: '700', color: PURPLE },
+  avatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 14,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
+  },
+  avatarText: { fontSize: 20, fontWeight: '800', color: THEME.colors.offWhite },
   info: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700', color: '#1a1a2e' },
-  email: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  name: { fontSize: 16, fontWeight: '800', color: THEME.colors.text },
+  email: { fontSize: 12, color: THEME.colors.textSecondary, marginTop: 2 },
 
   // Buttons
   addBtn: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 20,
-    minWidth: 60,
+    borderRadius: 18,
+    minWidth: 64,
     alignItems: 'center',
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  addBtnText: { color: THEME.colors.offWhite, fontSize: 13, fontWeight: '800' },
 
   statusBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: THEME.colors.accentLight,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
-  statusBadgeText: { color: '#059669', fontSize: 12, fontWeight: '700' },
-  statusSent: { backgroundColor: '#FEF3C7' },
-  statusSentText: { color: '#D97706', fontSize: 12, fontWeight: '700' },
+  statusBadgeText: { color: THEME.colors.offWhite, fontSize: 12, fontWeight: '700' },
+  statusSent: { backgroundColor: THEME.colors.surfaceWarm, borderColor: THEME.colors.border },
+  statusSentText: { color: THEME.colors.warning, fontSize: 12, fontWeight: '700' },
 
   // Accept / Reject
   actionRow: { flexDirection: 'row', gap: 8 },
   acceptBtn: {
-    backgroundColor: '#059669',
-    width: 38, height: 38, borderRadius: 19,
-    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: THEME.colors.success,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  acceptBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  acceptBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
   rejectBtn: {
-    backgroundColor: '#F3F4F6',
-    width: 38, height: 38, borderRadius: 19,
-    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: THEME.colors.accentLight,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  rejectBtnText: { color: '#6B7280', fontSize: 16, fontWeight: '700' },
+  rejectBtnText: { color: THEME.colors.offWhite, fontSize: 16, fontWeight: '800' },
 
   // Empty state
   emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 40,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 24,
+    padding: 36,
     alignItems: 'center',
     marginTop: 20,
-    shadowColor: PURPLE,
-    shadowOpacity: 0.06,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 3,
   },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a2e', marginBottom: 6 },
-  emptySubtext: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptySubtext: { fontSize: 14, color: THEME.colors.textSecondary, textAlign: 'center' },
 
   // Sent section
   sentSection: { marginTop: 24 },
-  sentTitle: { fontSize: 15, fontWeight: '700', color: '#6B7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sentTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textLight,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   sentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: THEME.colors.borderCrimson,
   },
   avatarSmall: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#EDE9FE',
-    justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.colors.surfaceWarm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
   },
-  avatarSmallText: { fontSize: 16, fontWeight: '700', color: PURPLE },
-  sentName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1a1a2e' },
-  sentStatus: { fontSize: 12, color: '#D97706', fontWeight: '600' },
+  avatarSmallText: { fontSize: 15, fontWeight: '800', color: THEME.colors.offWhite },
+  sentName: { flex: 1, fontSize: 14, fontWeight: '700', color: THEME.colors.text },
+  sentStatus: { fontSize: 12, color: THEME.colors.warning, fontWeight: '600' },
 });

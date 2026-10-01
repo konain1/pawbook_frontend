@@ -155,7 +155,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
 
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Connect with fellow pet lovers in a calming, friendly space
+              Connect with fellow pet lovers in a clean, premium space
             </Text>
 
             <View style={styles.inputGroup}>
@@ -202,7 +202,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
               activeOpacity={0.88}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={THEME.colors.offWhite} />
               ) : (
                 <Text style={styles.primaryBtnText}>Continue & Verify Email →</Text>
               )}
@@ -260,7 +260,7 @@ export default function RegisterScreen({ navigation, onRegisterSuccess }) {
               activeOpacity={0.88}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={THEME.colors.offWhite} />
               ) : (
                 <Text style={styles.primaryBtnText}>Verify & Create Account 🐾</Text>
               )}
@@ -318,17 +318,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 2,
   },
   backButtonIcon: {
     fontSize: 16,
-    color: THEME.colors.primary,
+    color: THEME.colors.primaryLight,
     marginRight: 4,
     fontWeight: '700',
   },
@@ -348,25 +348,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 28,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.borderCrimson,
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 4,
+    elevation: 5,
   },
   badgePill: {
     alignSelf: 'flex-start',
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.accentLight,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
     marginBottom: 12,
   },
   badgePillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.offWhite,
   },
   title: {
     fontSize: 26,
@@ -382,7 +384,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   highlightEmail: {
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.secondary,
     fontWeight: '700',
   },
   inputGroup: {
@@ -396,7 +398,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   input: {
-    backgroundColor: '#FFFDFB',
+    backgroundColor: THEME.colors.surfaceWarm,
     color: THEME.colors.text,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -411,7 +413,7 @@ const styles = StyleSheet.create({
   },
   otpInput: {
     width: '100%',
-    backgroundColor: '#FFFDFB',
+    backgroundColor: THEME.colors.surfaceWarm,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 12,
@@ -420,14 +422,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: THEME.colors.primary,
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.offWhite,
   },
   spamHintBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF5F0',
+    backgroundColor: THEME.colors.accentLight,
     borderWidth: 1,
-    borderColor: '#FFE2DA',
+    borderColor: THEME.colors.borderCrimson,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 11,
@@ -445,7 +447,7 @@ const styles = StyleSheet.create({
   },
   spamHintBold: {
     fontWeight: '700',
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.offWhite,
   },
   primaryBtn: {
     backgroundColor: THEME.colors.primary,
@@ -456,15 +458,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 6,
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    color: THEME.colors.offWhite,
     fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   loginFooterRow: {
     flexDirection: 'row',
@@ -477,7 +479,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   footerLink: {
-    color: THEME.colors.primary,
+    color: THEME.colors.secondary,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   resendText: {
-    color: THEME.colors.primary,
+    color: THEME.colors.secondary,
     fontSize: 14,
     fontWeight: '700',
   },

@@ -9,11 +9,11 @@ const { width } = Dimensions.get('window');
 export default function WelcomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
 
       {/* Decorative Top Tag */}
       <View style={styles.topBadge}>
-        <Text style={styles.topBadgeText}>🐾 Simple, cute & calming</Text>
+        <Text style={styles.topBadgeText}>🐾 Clean • Premium • Timeless</Text>
       </View>
 
       {/* Mascot Card Hero */}
@@ -22,9 +22,9 @@ export default function WelcomeScreen({ navigation }) {
       </View>
 
       {/* Title & Description */}
-      <Text style={styles.title}>Pawbook 🐈</Text>
+      <Text style={styles.title}>Pawbook 🐾</Text>
       <Text style={styles.subtitle}>
-        A warm, joyful space for pet lovers to share moments, make friends & chat
+        An exclusive space for pet lovers to share moments, make friends & chat
       </Text>
 
       {/* Action Buttons */}
@@ -47,7 +47,7 @@ export default function WelcomeScreen({ navigation }) {
       </View>
 
       {/* Footer */}
-      <Text style={styles.footer}>Made with ❤️ for pets & their humans</Text>
+      <Text style={styles.footer}>Crafted with ❤️ for pets & their humans</Text>
     </View>
   );
 }
@@ -61,31 +61,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   topBadge: {
-    backgroundColor: THEME.colors.accent,
+    backgroundColor: THEME.colors.accentLight,
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
     marginBottom: 24,
   },
   topBadgeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: THEME.colors.primaryDark,
+    color: THEME.colors.offWhite,
+    letterSpacing: 0.5,
   },
   heroCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     width: width * 0.72,
     height: width * 0.62,
     borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.borderCrimson,
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.35,
     shadowRadius: 20,
-    elevation: 4,
+    elevation: 6,
     marginBottom: 32,
   },
   title: {
@@ -115,18 +118,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.32,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 6,
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    color: THEME.colors.offWhite,
     fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   secondaryBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     width: '100%',
     paddingVertical: 16,
     borderRadius: 26,
@@ -134,9 +137,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: THEME.colors.border,
     shadowColor: '#000',
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 1,
+    elevation: 2,
   },
   secondaryBtnText: {
     color: THEME.colors.text,

@@ -20,8 +20,8 @@ import {
   sendMessage,
   markMessagesAsRead,
 } from '../services/api';
-
-const PURPLE = '#7C3AED';
+import { THEME } from '../constants/theme';
+import CatMascot from '../components/CatMascot';
 
 export default function ChatScreen({ user, token, navigation }) {
   const [friends, setFriends] = useState([]);
@@ -39,7 +39,7 @@ export default function ChatScreen({ user, token, navigation }) {
 
   const scrollViewRef = useRef(null);
 
-  // ─── Fetch Friends & Recent Conversations ..
+  // ── Fetch Friends & Recent Conversations ──
   const loadChatData = useCallback(async () => {
     if (!token) return;
     try {
@@ -66,7 +66,7 @@ export default function ChatScreen({ user, token, navigation }) {
     loadChatData();
   };
 
-  // ─── Fetch Messages with Active Friend ────────────────────────
+  // ── Fetch Messages with Active Friend ──
   const fetchActiveConversation = useCallback(
     async (silent = false) => {
       if (!token || !activeFriend) return;
@@ -75,7 +75,6 @@ export default function ChatScreen({ user, token, navigation }) {
       try {
         const data = await getConversation(token, friendId);
         setMessages(Array.isArray(data) ? data : []);
-        // Mark messages as read
         markMessagesAsRead(token, friendId).catch(() => {});
       } catch (err) {
         if (!silent) {
@@ -88,11 +87,9 @@ export default function ChatScreen({ user, token, navigation }) {
     [token, activeFriend]
   );
 
-  // Load messages when activeFriend changes
   useEffect(() => {
     if (activeFriend) {
       fetchActiveConversation(false);
-      // Auto-poll for new messages every 3 seconds while chat is active
       const interval = setInterval(() => {
         fetchActiveConversation(true);
       }, 3000);
@@ -102,263 +99,218 @@ export default function ChatScreen({ user, token, navigation }) {
 
   // Scroll to bottom when messages update
   useEffect(() => {
-    if (messages.length > 0) {
+    if (activeFriend && messages.length > 0) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages.length]);
+  }, [messages, activeFriend]);
 
-  // ─── Send Message ─────────────────────────────────────────────
-  const handleSendMessage = async () => {
+  // ── Send Message ──
+  const handleSend = async () => {
     if (!inputText.trim() || !activeFriend || sending) return;
     const textToSend = inputText.trim();
+    const friendId = activeFriend._id || activeFriend.id;
+
+    const tempMsg = {
+      _id: `temp-${Date.now()}`,
+      sender: user?._id || user?.id,
+      receiver: friendId,
+      text: textToSend,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempMsg]);
     setInputText('');
     setSending(true);
 
-    const friendId = activeFriend._id || activeFriend.id;
-
-    // Optimistic message
-    const tempMessage = {
-      _id: `temp-${Date.now()}`,
-      sender: { _id: user?._id || user?.id, username: user?.username, avatar: user?.avatar },
-      receiver: { _id: friendId, username: activeFriend.username, avatar: activeFriend.avatar },
-      text: textToSend,
-      createdAt: new Date().toISOString(),
-      read: false,
-    };
-
-    setMessages((prev) => [...prev, tempMessage]);
-
     try {
-      const savedMessage = await sendMessage(token, friendId, textToSend);
-      // Replace temp message with server message
+      const savedMsg = await sendMessage(token, friendId, textToSend);
       setMessages((prev) =>
-        prev.map((msg) => (msg._id === tempMessage._id ? savedMessage : msg))
+        prev.map((m) => (m._id === tempMsg._id ? savedMsg : m))
       );
-      loadChatData(); // refresh conversation snippet in background
+      loadChatData();
     } catch (err) {
-      Alert.alert('Send Failed', err.message || 'You can only chat with friends.');
-      // Remove optimistic message if failed
-      setMessages((prev) => prev.filter((msg) => msg._id !== tempMessage._id));
+      Alert.alert('Send Error', err.message || 'Failed to send message');
+      setMessages((prev) => prev.filter((m) => m._id !== tempMsg._id));
+      setInputText(textToSend);
     } finally {
       setSending(false);
     }
   };
 
-  // ─── Helper Functions ─────────────────────────────────────────
   const getInitial = (name) =>
     typeof name === 'string' && name.length > 0 ? name[0].toUpperCase() : '?';
 
-  const formatMessageTime = (dateStr) => {
+  const formatTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const isToday =
-      date.getDate() === now.getDate() &&
-      date.getMonth() === now.getMonth() &&
-      date.getFullYear() === now.getFullYear();
-
-    if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Combine friends with their latest conversation data
-  const mergedChatList = friends.map((f) => {
-    const friendId = (f._id || f.id)?.toString();
-    const conv = conversations.find(
-      (c) => (c.friend?._id || c.friend?.id || c.friend)?.toString() === friendId
-    );
+  // Build unified list of chat contacts
+  const chatContacts = friends.map((friend) => {
+    const friendId = friend._id || friend.id;
+    const conv = conversations.find((c) => {
+      const otherId = c.otherUser?._id || c.otherUser?.id || c.otherUser;
+      return otherId === friendId;
+    });
     return {
-      friend: f,
+      friend,
       lastMessage: conv?.lastMessage || null,
       unreadCount: conv?.unreadCount || 0,
+      lastActivity: conv?.lastActivity || conv?.lastMessage?.createdAt || null,
     };
   });
 
-  // Sort by latest message time
-  mergedChatList.sort((a, b) => {
-    const timeA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
-    const timeB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
-    return timeB - timeA;
+  chatContacts.sort((a, b) => {
+    if (a.lastActivity && b.lastActivity) {
+      return new Date(b.lastActivity) - new Date(a.lastActivity);
+    }
+    if (a.lastActivity) return -1;
+    if (b.lastActivity) return 1;
+    return 0;
   });
 
-  const filteredChatList = mergedChatList.filter((item) =>
-    item.friend?.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredContacts = chatContacts.filter((c) =>
+    c.friend?.username?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ─── RENDER 1-ON-1 CHAT ROOM ─────────────────────────────────
-  if (activeFriend) {
-    const friendId = activeFriend._id || activeFriend.id;
-
+  if (loading) {
     return (
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        {/* Chat Room Header */}
-        <View style={styles.chatHeader}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => {
-              setActiveFriend(null);
-              setMessages([]);
-              loadChatData();
-            }}
-          >
-            <Text style={styles.backBtnText}>←</Text>
-          </TouchableOpacity>
-
-          {activeFriend.avatar ? (
-            <Image source={{ uri: activeFriend.avatar }} style={styles.chatHeaderAvatar} />
-          ) : (
-            <View style={styles.chatHeaderAvatarPlaceholder}>
-              <Text style={styles.chatHeaderAvatarText}>
-                {getInitial(activeFriend.username)}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.chatHeaderInfo}>
-            <Text style={styles.chatHeaderName}>{activeFriend.username}</Text>
-            <Text style={styles.chatHeaderStatus}>🐾 Friend</Text>
-          </View>
-        </View>
-
-        {/* Messages ScrollView */}
-        {loadingMessages ? (
-          <View style={styles.loadingView}>
-            <ActivityIndicator size="large" color={PURPLE} />
-          </View>
-        ) : (
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesContainer}
-            contentContainerStyle={styles.messagesContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {messages.length === 0 ? (
-              <View style={styles.emptyMessagesBox}>
-                <Text style={styles.emptyMessagesEmoji}>👋</Text>
-                <Text style={styles.emptyMessagesTitle}>
-                  Start a conversation with {activeFriend.username}!
-                </Text>
-                <Text style={styles.emptyMessagesSubtitle}>
-                  Only friends can send and receive messages here.
-                </Text>
-              </View>
-            ) : (
-              messages.map((msg, index) => {
-                const senderId =
-                  typeof msg.sender === 'object'
-                    ? (msg.sender?._id || msg.sender?.id)?.toString()
-                    : msg.sender?.toString();
-                const myId = (user?._id || user?.id)?.toString();
-                const isMe = senderId === myId;
-
-                return (
-                  <View
-                    key={msg._id || index}
-                    style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}
-                  >
-                    {!isMe && (
-                      activeFriend.avatar ? (
-                        <Image source={{ uri: activeFriend.avatar }} style={styles.bubbleAvatar} />
-                      ) : (
-                        <View style={styles.bubbleAvatarPlaceholder}>
-                          <Text style={styles.bubbleAvatarText}>
-                            {getInitial(activeFriend.username)}
-                          </Text>
-                        </View>
-                      )
-                    )}
-
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        isMe ? styles.bubbleMe : styles.bubbleThem,
-                      ]}
-                    >
-                      <Text style={[styles.messageText, isMe ? styles.textMe : styles.textThem]}>
-                        {msg.text}
-                      </Text>
-                      <Text style={[styles.messageTime, isMe ? styles.timeMe : styles.timeThem]}>
-                        {formatMessageTime(msg.createdAt)}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </ScrollView>
-        )}
-
-        {/* Input Bar */}
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder={`Message ${activeFriend.username}... 🐾`}
-            placeholderTextColor="#9CA3AF"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={1000}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendBtn,
-              (!inputText.trim() || sending) && styles.sendBtnDisabled,
-            ]}
-            disabled={!inputText.trim() || sending}
-            onPress={handleSendMessage}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.sendBtnText}>Send</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+      <View style={[styles.container, styles.loadingView]}>
+        <CatMascot size={64} />
+        <ActivityIndicator size="small" color={THEME.colors.primary} style={{ marginTop: 14 }} />
+      </View>
     );
   }
 
-  // ─── RENDER CONVERSATION / FRIENDS LIST ───────────────────────
   return (
     <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.listHeader}>
-        <Text style={styles.title}>💬 Chat</Text>
-        <Text style={styles.subtitle}>Chat only with your friends</Text>
+      {/* ── Active 1-on-1 Chat Room ── */}
+      {activeFriend ? (
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          {/* Room Header */}
+          <View style={styles.chatHeader}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => setActiveFriend(null)}>
+              <Text style={styles.backBtnText}>←</Text>
+            </TouchableOpacity>
 
-        {/* Search Bar */}
-        {friends.length > 0 && (
-          <View style={styles.searchBar}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search friends..."
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Text style={styles.clearSearch}>✕</Text>
-              </TouchableOpacity>
+            {activeFriend.avatar ? (
+              <Image source={{ uri: activeFriend.avatar }} style={styles.chatHeaderAvatar} />
+            ) : (
+              <View style={styles.chatHeaderAvatarPlaceholder}>
+                <Text style={styles.chatHeaderAvatarText}>
+                  {getInitial(activeFriend.username)}
+                </Text>
+              </View>
             )}
-          </View>
-        )}
-      </View>
 
-      {loading ? (
-        <View style={styles.loadingView}>
-          <ActivityIndicator size="large" color={PURPLE} />
-        </View>
+            <View style={styles.chatHeaderInfo}>
+              <Text style={styles.chatHeaderName}>{activeFriend.username}</Text>
+              <Text style={styles.chatHeaderStatus}>● Connected</Text>
+            </View>
+          </View>
+
+          {/* Messages Feed */}
+          {loadingMessages && messages.length === 0 ? (
+            <View style={styles.loadingView}>
+              <ActivityIndicator color={THEME.colors.primary} />
+            </View>
+          ) : (
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.messagesContainer}
+              contentContainerStyle={styles.messagesContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {messages.length === 0 ? (
+                <View style={styles.emptyMessagesBox}>
+                  <CatMascot size={70} />
+                  <Text style={styles.emptyMessagesTitle}>
+                    Say hello to {activeFriend.username}! 🐾
+                  </Text>
+                  <Text style={styles.emptyMessagesSubtitle}>
+                    Send a quick greeting to start your conversation.
+                  </Text>
+                </View>
+              ) : (
+                messages.map((msg, index) => {
+                  const myId = user?._id || user?.id;
+                  const senderId =
+                    typeof msg.sender === 'object' ? msg.sender?._id : msg.sender;
+                  const isMe = senderId === myId;
+
+                  return (
+                    <View
+                      key={msg._id || index}
+                      style={[
+                        styles.messageRow,
+                        isMe ? styles.messageRowMe : styles.messageRowThem,
+                      ]}
+                    >
+                      {!isMe &&
+                        (activeFriend.avatar ? (
+                          <Image
+                            source={{ uri: activeFriend.avatar }}
+                            style={styles.bubbleAvatar}
+                          />
+                        ) : (
+                          <View style={styles.bubbleAvatarPlaceholder}>
+                            <Text style={styles.bubbleAvatarText}>
+                              {getInitial(activeFriend.username)}
+                            </Text>
+                          </View>
+                        ))}
+
+                      <View
+                        style={[
+                          styles.messageBubble,
+                          isMe ? styles.bubbleMe : styles.bubbleThem,
+                        ]}
+                      >
+                        <Text style={[styles.messageText, isMe ? styles.textMe : styles.textThem]}>
+                          {msg.text}
+                        </Text>
+                        <Text style={[styles.messageTime, isMe ? styles.timeMe : styles.timeThem]}>
+                          {formatTime(msg.createdAt)}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          )}
+
+          {/* Message Input Bar */}
+          <View style={styles.inputBar}>
+            <TextInput
+              style={styles.textInput}
+              placeholder={`Message ${activeFriend.username}…`}
+              placeholderTextColor={THEME.colors.textLight}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                !inputText.trim() || sending ? styles.sendBtnDisabled : null,
+              ]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || sending}
+            >
+              <Text style={styles.sendBtnText}>{sending ? '…' : 'Send'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       ) : (
+        /* ── Conversation List View ── */
         <ScrollView
           style={styles.listScrollView}
           contentContainerStyle={styles.listContent}
@@ -366,40 +318,72 @@ export default function ChatScreen({ user, token, navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={PURPLE}
+              tintColor={THEME.colors.primary}
             />
           }
+          keyboardShouldPersistTaps="handled"
         >
+          {/* Header */}
+          <View style={styles.listHeader}>
+            <Text style={styles.title}>💬 Messages</Text>
+            <Text style={styles.subtitle}>Chat directly with your pet friends</Text>
+
+            {/* Search Input */}
+            <View style={styles.searchBar}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search conversations..."
+                placeholderTextColor={THEME.colors.textLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                clearButtonMode="while-editing"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Text style={styles.clearSearch}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Contact List */}
           {friends.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyEmoji}>🐾</Text>
+              <CatMascot size={80} />
               <Text style={styles.emptyTitle}>No Friends Yet</Text>
               <Text style={styles.emptySubtext}>
-                Only confirmed friends can chat with each other. Search and add friends to unlock messaging!
+                You need friends to start messaging. Search and add friends from the Friends tab!
               </Text>
               <TouchableOpacity
                 style={styles.emptyBtn}
                 onPress={() => navigation?.navigate('Friends')}
+                activeOpacity={0.88}
               >
-                <Text style={styles.emptyBtnText}>Find Friends</Text>
+                <Text style={styles.emptyBtnText}>🐾 Find Friends</Text>
               </TouchableOpacity>
             </View>
-          ) : filteredChatList.length === 0 ? (
+          ) : filteredContacts.length === 0 ? (
             <View style={styles.emptySearchCard}>
               <Text style={styles.emptySearchText}>No friends matching "{searchQuery}"</Text>
             </View>
           ) : (
-            filteredChatList.map(({ friend, lastMessage, unreadCount }) => {
+            filteredContacts.map(({ friend, lastMessage, unreadCount, lastActivity }) => {
               const friendId = friend._id || friend.id;
+              const hasLastMsg = !!lastMessage;
+              const myId = user?._id || user?.id;
+              const isLastFromMe =
+                typeof lastMessage?.sender === 'object'
+                  ? lastMessage?.sender?._id === myId
+                  : lastMessage?.sender === myId;
 
               return (
                 <TouchableOpacity
                   key={friendId}
                   style={styles.friendCard}
-                  activeOpacity={0.75}
                   onPress={() => setActiveFriend(friend)}
+                  activeOpacity={0.8}
                 >
-                  {/* Avatar with Friend Badge */}
                   <View style={styles.avatarContainer}>
                     {friend.avatar ? (
                       <Image source={{ uri: friend.avatar }} style={styles.avatar} />
@@ -411,14 +395,11 @@ export default function ChatScreen({ user, token, navigation }) {
                     <View style={styles.onlineDot} />
                   </View>
 
-                  {/* Friend Info & Last Msg */}
                   <View style={styles.friendInfo}>
                     <View style={styles.friendHeaderRow}>
                       <Text style={styles.friendName}>{friend.username}</Text>
-                      {lastMessage && (
-                        <Text style={styles.lastTime}>
-                          {formatMessageTime(lastMessage.createdAt)}
-                        </Text>
+                      {lastActivity && (
+                        <Text style={styles.lastTime}>{formatTime(lastActivity)}</Text>
                       )}
                     </View>
 
@@ -426,13 +407,13 @@ export default function ChatScreen({ user, token, navigation }) {
                       <Text
                         style={[
                           styles.snippetText,
-                          unreadCount > 0 && styles.snippetUnread,
+                          unreadCount > 0 ? styles.snippetUnread : null,
                         ]}
                         numberOfLines={1}
                       >
-                        {lastMessage
-                          ? lastMessage.text
-                          : friend.bio || 'Tap to start chatting 🐾'}
+                        {hasLastMsg
+                          ? `${isLastFromMe ? 'You: ' : ''}${lastMessage.text}`
+                          : 'Tap to start a conversation 🐾'}
                       </Text>
 
                       {unreadCount > 0 && (
@@ -453,62 +434,68 @@ export default function ChatScreen({ user, token, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F3FF' },
+  container: { flex: 1, backgroundColor: THEME.colors.background },
   loadingView: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // ── List View Styles ──
   listHeader: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 10,
+    paddingTop: 52,
+    paddingBottom: 12,
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#1a1a2e' },
-  subtitle: { fontSize: 13, color: '#9CA3AF', marginTop: 2, marginBottom: 12 },
+  title: { fontSize: 26, fontWeight: '800', color: THEME.colors.text, letterSpacing: -0.3 },
+  subtitle: { fontSize: 13, color: THEME.colors.textSecondary, marginTop: 2, marginBottom: 14 },
 
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: THEME.colors.surfaceWarm,
+    borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#EDE9FE',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: THEME.colors.border,
   },
   searchIcon: { fontSize: 14, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: '#1a1a2e' },
-  clearSearch: { fontSize: 14, color: '#9CA3AF', paddingHorizontal: 6 },
+  searchInput: { flex: 1, fontSize: 14, color: THEME.colors.text },
+  clearSearch: { fontSize: 14, color: THEME.colors.textLight, paddingHorizontal: 6 },
 
   listScrollView: { flex: 1 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 100 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 110 },
 
   friendCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 20,
     padding: 14,
     marginBottom: 10,
-    shadowColor: PURPLE,
-    shadowOpacity: 0.07,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 3,
   },
   avatarContainer: { position: 'relative', marginRight: 14 },
-  avatar: { width: 50, height: 50, borderRadius: 25 },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
+  },
   avatarPlaceholder: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: THEME.colors.surfaceWarm,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
   },
-  avatarText: { fontSize: 20, fontWeight: '700', color: PURPLE },
+  avatarText: { fontSize: 20, fontWeight: '800', color: THEME.colors.offWhite },
   onlineDot: {
     position: 'absolute',
     bottom: 0,
@@ -516,9 +503,9 @@ const styles = StyleSheet.create({
     width: 13,
     height: 13,
     borderRadius: 6.5,
-    backgroundColor: '#10B981',
+    backgroundColor: THEME.colors.success,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: THEME.colors.surface,
   },
 
   friendInfo: { flex: 1 },
@@ -528,19 +515,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  friendName: { fontSize: 16, fontWeight: '700', color: '#1a1a2e' },
-  lastTime: { fontSize: 11, color: '#9CA3AF' },
+  friendName: { fontSize: 16, fontWeight: '800', color: THEME.colors.text },
+  lastTime: { fontSize: 11, color: THEME.colors.textLight },
 
   messageSnippetRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  snippetText: { fontSize: 13, color: '#6B7280', flex: 1 },
-  snippetUnread: { color: '#1a1a2e', fontWeight: '700' },
+  snippetText: { fontSize: 13, color: THEME.colors.textSecondary, flex: 1 },
+  snippetUnread: { color: THEME.colors.offWhite, fontWeight: '800' },
 
   unreadBadge: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -549,70 +536,87 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     marginLeft: 8,
   },
-  unreadBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  unreadBadgeText: { color: THEME.colors.offWhite, fontSize: 11, fontWeight: '800' },
 
   // Empty states
   emptyCard: {
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.surface,
     borderRadius: 24,
     padding: 36,
     alignItems: 'center',
     marginVertical: 20,
-    shadowColor: PURPLE,
-    shadowOpacity: 0.08,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 4,
   },
-  emptyEmoji: { fontSize: 44, marginBottom: 12 },
-  emptyTitle: { fontSize: 19, fontWeight: '700', color: '#1a1a2e', marginBottom: 6 },
+  emptyTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: THEME.colors.text,
+    marginTop: 12,
+    marginBottom: 6,
+  },
   emptySubtext: {
     fontSize: 13,
-    color: '#6B7280',
+    color: THEME.colors.textSecondary,
     textAlign: 'center',
     lineHeight: 19,
     marginBottom: 20,
   },
   emptyBtn: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 22,
-    paddingVertical: 11,
+    paddingVertical: 12,
     borderRadius: 20,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  emptyBtnText: { color: THEME.colors.offWhite, fontWeight: '800', fontSize: 14 },
 
   emptySearchCard: { padding: 30, alignItems: 'center' },
-  emptySearchText: { fontSize: 14, color: '#9CA3AF' },
+  emptySearchText: { fontSize: 14, color: THEME.colors.textLight },
 
   // ── 1-on-1 Chat Room Styles ──
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.surface,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 48,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDE9FE',
-    shadowColor: PURPLE,
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderBottomColor: THEME.colors.borderCrimson,
   },
-  backBtn: { paddingRight: 12, paddingVertical: 4 },
-  backBtnText: { fontSize: 24, fontWeight: '700', color: PURPLE },
-  chatHeaderAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+  backBtn: { paddingRight: 14, paddingVertical: 4 },
+  backBtnText: { fontSize: 24, fontWeight: '800', color: THEME.colors.primaryLight },
+  chatHeaderAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
+  },
   chatHeaderAvatarPlaceholder: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: THEME.colors.surfaceWarm,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.borderCrimson,
   },
-  chatHeaderAvatarText: { fontSize: 16, fontWeight: '700', color: PURPLE },
+  chatHeaderAvatarText: { fontSize: 16, fontWeight: '800', color: THEME.colors.offWhite },
   chatHeaderInfo: { flex: 1 },
-  chatHeaderName: { fontSize: 16, fontWeight: '700', color: '#1a1a2e' },
-  chatHeaderStatus: { fontSize: 12, color: '#10B981', fontWeight: '600' },
+  chatHeaderName: { fontSize: 16, fontWeight: '800', color: THEME.colors.text },
+  chatHeaderStatus: { fontSize: 12, color: THEME.colors.success, fontWeight: '600' },
 
   messagesContainer: { flex: 1 },
   messagesContent: { padding: 16, paddingBottom: 24 },
@@ -622,17 +626,17 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 20,
   },
-  emptyMessagesEmoji: { fontSize: 40, marginBottom: 10 },
   emptyMessagesTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a2e',
+    fontWeight: '800',
+    color: THEME.colors.text,
     textAlign: 'center',
+    marginTop: 12,
     marginBottom: 4,
   },
   emptyMessagesSubtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: THEME.colors.textSecondary,
     textAlign: 'center',
   },
 
@@ -649,13 +653,15 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: THEME.colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: THEME.colors.borderCrimson,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 6,
     marginBottom: 2,
   },
-  bubbleAvatarText: { fontSize: 11, fontWeight: '700', color: PURPLE },
+  bubbleAvatarText: { fontSize: 11, fontWeight: '800', color: THEME.colors.offWhite },
 
   messageBubble: {
     maxWidth: '75%',
@@ -664,49 +670,53 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   bubbleMe: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     borderBottomRightRadius: 4,
+    shadowColor: THEME.colors.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
   bubbleThem: {
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.surfaceElevated,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#EDE9FE',
+    borderColor: THEME.colors.borderCrimson,
   },
 
   messageText: { fontSize: 14, lineHeight: 20 },
-  textMe: { color: '#fff' },
-  textThem: { color: '#1a1a2e' },
+  textMe: { color: THEME.colors.offWhite, fontWeight: '500' },
+  textThem: { color: THEME.colors.text },
 
   messageTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
-  timeMe: { color: 'rgba(255,255,255,0.7)' },
-  timeThem: { color: '#9CA3AF' },
+  timeMe: { color: 'rgba(245,242,237,0.7)' },
+  timeThem: { color: THEME.colors.textLight },
 
   // Input Bar
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: THEME.colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#EDE9FE',
+    borderTopColor: THEME.colors.borderCrimson,
     gap: 8,
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: THEME.colors.surfaceWarm,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#1a1a2e',
+    color: THEME.colors.text,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: THEME.colors.border,
     maxHeight: 100,
   },
   sendBtn: {
-    backgroundColor: PURPLE,
+    backgroundColor: THEME.colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -714,7 +724,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sendBtnDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: '#26060A',
   },
-  sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  sendBtnText: { color: THEME.colors.offWhite, fontWeight: '800', fontSize: 14 },
 });

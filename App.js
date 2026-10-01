@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
@@ -66,6 +67,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: THEME.colors.background }]}>
+      <StatusBar style="light" backgroundColor={THEME.colors.background} />
       {renderScreen()}
     </SafeAreaView>
   );

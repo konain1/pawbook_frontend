@@ -1,19 +1,23 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { THEME } from '../constants/theme';
 
-export default function CatMascot({ size = 110, style, mood = 'happy' }) {
+export default function CatMascot({ size = 110, style }) {
   const scale = size / 110;
 
   return (
     <View style={[styles.container, { width: size, height: size * 0.9 }, style]}>
-      {/* Ears */}
-      <View style={[styles.earLeft, { transform: [{ scale }] }]} />
-      <View style={[styles.earRight, { transform: [{ scale }] }]} />
+      {/* Outer Ears */}
+      <View style={[styles.earLeft, { transform: [{ scale }, { rotate: '-25deg' }] }]} />
+      <View style={[styles.earRight, { transform: [{ scale }, { rotate: '25deg' }] }]} />
+
+      {/* Inner Crimson Ears */}
+      <View style={[styles.innerEarLeft, { transform: [{ scale: scale * 0.6 }, { rotate: '-25deg' }] }]} />
+      <View style={[styles.innerEarRight, { transform: [{ scale: scale * 0.6 }, { rotate: '25deg' }] }]} />
       
       {/* Head */}
       <View style={[styles.head, { width: size, height: size * 0.82, borderRadius: size * 0.41 }]}>
-        {/* Cute Eyes Container */}
+        {/* Eyes Container */}
         <View style={styles.eyesRow}>
           {/* Left Eye */}
           <View style={[styles.eye, { width: 22 * scale, height: 22 * scale, borderRadius: 11 * scale }]}>
@@ -28,16 +32,16 @@ export default function CatMascot({ size = 110, style, mood = 'happy' }) {
           </View>
         </View>
 
-        {/* Blush Cheeks */}
+        {/* Blush Cheeks (Crimson) */}
         <View style={styles.blushRow}>
           <View style={[styles.blush, { width: 16 * scale, height: 8 * scale, borderRadius: 4 * scale }]} />
           <View style={[styles.blush, { width: 16 * scale, height: 8 * scale, borderRadius: 4 * scale }]} />
         </View>
 
-        {/* Little Pink Nose */}
-        <View style={[styles.nose, { width: 6 * scale, height: 4 * scale, borderRadius: 2 * scale }]} />
+        {/* Crimson Red Nose */}
+        <View style={[styles.nose, { width: 8 * scale, height: 5 * scale, borderRadius: 2.5 * scale }]} />
 
-        {/* Cute Whiskers */}
+        {/* Whiskers */}
         <View style={[styles.whiskerLeft1, { width: 18 * scale, top: 46 * scale, left: -10 * scale }]} />
         <View style={[styles.whiskerLeft2, { width: 18 * scale, top: 54 * scale, left: -10 * scale }]} />
         <View style={[styles.whiskerRight1, { width: 18 * scale, top: 46 * scale, right: -10 * scale }]} />
@@ -64,8 +68,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 32,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#1E1E1E',
-    transform: [{ rotate: '-25deg' }],
+    borderBottomColor: '#F5F2ED',
     zIndex: 1,
   },
   earRight: {
@@ -79,21 +82,48 @@ const styles = StyleSheet.create({
     borderBottomWidth: 32,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#1E1E1E',
-    transform: [{ rotate: '25deg' }],
+    borderBottomColor: '#F5F2ED',
     zIndex: 1,
   },
+  innerEarLeft: {
+    position: 'absolute',
+    top: 8,
+    left: 17,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 20,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#8B0D1A',
+    zIndex: 2,
+  },
+  innerEarRight: {
+    position: 'absolute',
+    top: 8,
+    right: 17,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 20,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#8B0D1A',
+    zIndex: 2,
+  },
   head: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#F5F2ED',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    zIndex: 2,
-    shadowColor: '#1E1E1E',
-    shadowOpacity: 0.15,
+    zIndex: 3,
+    shadowColor: '#8B0D1A',
+    shadowOpacity: 0.25,
     shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 10,
+    elevation: 4,
   },
   eyesRow: {
     flexDirection: 'row',
@@ -102,13 +132,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   eye: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0B0B0B',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   eyePupil: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0B0B0B',
     position: 'absolute',
   },
   eyeSparkle: {
@@ -122,39 +152,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '75%',
     position: 'absolute',
-    bottom: 22,
+    bottom: 20,
   },
   blush: {
-    backgroundColor: '#F9876F',
-    opacity: 0.55,
+    backgroundColor: '#8B0D1A',
+    opacity: 0.45,
   },
   nose: {
-    backgroundColor: '#F9876F',
+    backgroundColor: '#8B0D1A',
     position: 'absolute',
-    bottom: 24,
+    bottom: 22,
   },
   whiskerLeft1: {
     position: 'absolute',
     height: 1.5,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0B0B0B',
     transform: [{ rotate: '-8deg' }],
   },
   whiskerLeft2: {
     position: 'absolute',
     height: 1.5,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0B0B0B',
     transform: [{ rotate: '8deg' }],
   },
   whiskerRight1: {
     position: 'absolute',
     height: 1.5,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0B0B0B',
     transform: [{ rotate: '8deg' }],
   },
   whiskerRight2: {
     position: 'absolute',
     height: 1.5,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0B0B0B',
     transform: [{ rotate: '-8deg' }],
   },
 });

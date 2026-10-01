@@ -113,7 +113,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
         activeOpacity={0.85}
       >
         {uploadingAvatar ? (
-          <ActivityIndicator color={THEME.colors.primary} />
+          <ActivityIndicator color={THEME.colors.primaryLight} />
         ) : (
           <Text style={styles.changePhotoText}>📸 Change Profile Photo</Text>
         )}
@@ -133,7 +133,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Cute Bio</Text>
+        <Text style={styles.label}>Bio</Text>
         <TextInput
           style={[styles.input, styles.bioInput]}
           value={bio}
@@ -179,7 +179,7 @@ export default function EditProfileScreen({ token, user, navigation, onProfileUp
         activeOpacity={0.88}
       >
         {saving ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={THEME.colors.offWhite} />
         ) : (
           <Text style={styles.saveBtnText}>Save Changes</Text>
         )}
@@ -196,20 +196,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFEFEA',
+    backgroundColor: THEME.colors.surface,
     paddingTop: 52,
     paddingBottom: 18,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8E0D5',
+    borderBottomColor: THEME.colors.borderCrimson,
   },
   backBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surfaceWarm,
     borderWidth: 1,
-    borderColor: '#F2DCD3',
+    borderColor: THEME.colors.border,
   },
   backBtnText: { color: THEME.colors.text, fontSize: 14, fontWeight: '700' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: THEME.colors.text },
@@ -218,31 +218,31 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 18,
     marginBottom: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1.5,
-    borderColor: THEME.colors.primary,
+    borderColor: THEME.colors.borderCrimson,
     borderRadius: 20,
     paddingVertical: 14,
     alignItems: 'center',
     shadowColor: THEME.colors.primary,
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 2,
+    elevation: 3,
   },
-  changePhotoText: { color: THEME.colors.primaryDark, fontSize: 15, fontWeight: '800' },
+  changePhotoText: { color: THEME.colors.offWhite, fontSize: 15, fontWeight: '800' },
 
   sectionCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: THEME.colors.surface,
     marginHorizontal: 20,
     marginTop: 14,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.border,
+    borderColor: THEME.colors.borderCrimson,
     shadowColor: THEME.colors.primary,
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 2,
+    elevation: 3,
   },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: THEME.colors.text, marginBottom: 2 },
   sectionHint: { fontSize: 12, color: THEME.colors.textLight, marginBottom: 12 },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   input: {
-    backgroundColor: '#FFFDFB',
+    backgroundColor: THEME.colors.surfaceWarm,
     borderWidth: 1.5,
     borderColor: THEME.colors.border,
     borderRadius: 16,
@@ -277,9 +277,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: THEME.colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.45,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 5,
   },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  saveBtnText: { color: THEME.colors.offWhite, fontSize: 16, fontWeight: '800' },
 });

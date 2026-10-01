@@ -1,50 +1,68 @@
-// Pawbook "Peach Focus" Design Theme (Simple, Cute & Calming)
+// Pawbook "Crimson & Obsidian" Luxury Theme (Black #0B0B0B, Crimson Red #8B0D1A, Off White #F5F2ED)
 export const THEME = {
   colors: {
-    primary: '#F9876F',         // Warm Peach / Coral
-    primaryDark: '#E06B53',     // Deeper Peach for pressed states
-    primaryLight: '#FFECE5',    // Light Peach tint
-    secondary: '#E38C92',       // Soft Blush Rose
-    secondaryLight: '#FDF2F3',  // Light Rose tint
+    // Primary Crimson Palette
+    primary: '#8B0D1A',         // Crimson Red
+    primaryDark: '#5E0811',     // Deep Crimson for pressed/dark states
+    primaryLight: '#A81324',    // Vibrant Crimson for highlights
+    primaryGlow: 'rgba(139, 13, 26, 0.45)',
+    primaryTint: '#26060A',     // Deep Crimson Tint
+
+    secondary: '#C01B2E',       // Ruby Crimson Accent
+    secondaryLight: '#1E0A0D',  // Subtle crimson dark surface
     
-    background: '#FFF8F4',      // Soft Warm Cream Peach Background
-    surface: '#FFFFFF',         // Pure White Card Surface
-    surfaceWarm: '#FDF7F3',     // Warm White Surface
+    // Core Backgrounds
+    background: '#0B0B0B',      // Luxury Deep Black
+    surface: '#151515',         // Obsidian Card Surface
+    surfaceWarm: '#1C1C1C',     // Elevated Dark Surface
+    surfaceElevated: '#242424', // Highest elevation surface
     
-    text: '#1E1E1E',            // Charcoal Dark Text
-    textSecondary: '#636363',   // Muted Charcoal
-    textLight: '#948B84',       // Light Warm Gray
+    // Typography (Off White & Slate Muted)
+    text: '#F5F2ED',            // Crisp Off White Primary
+    textSecondary: '#B5B0A8',   // Warm Muted Off White
+    textLight: '#757068',       // Dimmed Slate Text
+    textInverse: '#0B0B0B',     // Black text for white/bright elements
     
-    border: '#F2E6DF',          // Subtle Warm Border
-    borderFocus: '#F9876F',     // Peach Border Focus
+    // Borders & Dividers
+    border: '#262626',          // Dark Border
+    borderFocus: '#8B0D1A',     // Crimson Red Border Focus
+    borderLight: '#1C1C1C',     // Subtle Divider
+    borderCrimson: '#4D0E15',   // Crimson-tinted border
     
-    accent: '#FFE2DA',          // Pill background
-    success: '#5FB68A',         // Soft Pastel Green
-    error: '#EB6565',           // Soft Red
-    warning: '#F5A623',         // Warm Amber
+    // Accents & Named Tokens
+    accent: '#8B0D1A',          // Crimson Pill / Highlight
+    accentLight: '#2D080D',     // Pill Background
+    offWhite: '#F5F2ED',        // Pure Off White
+    black: '#0B0B0B',           // Pure Luxury Black
+    crimson: '#8B0D1A',         // Pure Crimson Red
+    
+    // Functional States
+    success: '#3FA36C',         // Muted Emerald
+    error: '#D32F2F',           // Crimson Error
+    warning: '#D68910',         // Amber Warning
   },
   
   shadows: {
     soft: {
-      shadowColor: '#F9876F',
+      shadowColor: '#8B0D1A',
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 3,
+      shadowOpacity: 0.35,
+      shadowRadius: 14,
+      elevation: 4,
     },
     card: {
-      shadowColor: '#1E1E1E',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 14,
-      elevation: 2,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.6,
+      shadowRadius: 16,
+      elevation: 3,
     },
     button: {
-      shadowColor: '#F9876F',
+      shadowColor: '#8B0D1A',
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.28,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowOpacity: 0.45,
+      shadowRadius: 16,
+      elevation: 5,
     },
   },
   
